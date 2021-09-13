@@ -39,13 +39,13 @@ This document shows how to analyze the public HINTS data using the R statistics-
 To start, load the following packages.
 
 ```{r show-pkgs, eval=FALSE}
+library(tidyverse)
 library(broom)
-library(dplyr)
 library(haven)
-library(purrr)
 library(srvyr)
 library(survey)
-library(tidyr)
+library(here)
+library(kableExtra)
 ```
 
 Most of the work is done by the `{survey}` and `{srvyr}` packages. The `{survey}` package provides functions for analysis of data from complex samples with similar functionality to SUDAAN. The `{srvyr}` package is designed to do survey analysis with the popular `tidyverse` suite of add-on R packages. I'll use the `tidyverse` packages extensively.
