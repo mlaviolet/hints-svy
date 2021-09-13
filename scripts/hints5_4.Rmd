@@ -1,0 +1,249 @@
+---
+title: "HINTS with R"
+author:
+- name: Michael Laviolette, PhD MPH
+  email: statman54@gmail.com
+date: "`r format(Sys.time(), '%Y-%m-%d %H:%M')`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 4)
+```
+
+```{r load-pkgs, echo=FALSE, message=FALSE}
+library(broom)
+library(dplyr)
+library(haven)
+library(purrr)
+library(srvyr)
+library(survey)
+library(tidyr)
+library(kableExtra)
+library(here)
+```
+
+# Introduction
+
+The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to collect nationally representative data about the American public's use of cancer-related information. 
+
+This document shows how to analyze the public HINTS data using the R statistics-graphics language. It follows the discussion in *Overview of the HINTS 5 Cycle 4 Survey and Data Analysis Recommendations*, available [here](https://hints.cancer.gov/data/download-data.aspx). Page numbers and section citations refer to that document.
+
+# Analyzing HINTS data
+
+### HINTS 5 Cycle 4
+
+To start, load the following packages.
+
+```{r show-pkgs, eval=FALSE}
+library(broom)
+library(dplyr)
+library(haven)
+library(purrr)
+library(srvyr)
+library(survey)
+library(tidyr)
+```
+
+Most of the work is done by the `{survey}` and `{srvyr}` packages. The `{survey}` package provides functions for analysis of data from complex samples with similar functionality to SUDAAN. The `{srvyr}` package is designed to do survey analysis with the popular `tidyverse` suite of add-on R packages. I'll use the `tidyverse` packages extensively.
+
+#### Import and recode data
+
+HINTS data are provided in three formats: SAS `.sas7bdat` data set, SPSS (`.sav`, `.por`), and Stata (`.dta`, versions prior to 13). All can be imported by R; I'll work with the SAS data. First we import the SAS data set into R using `read_sas()` from the `{haven}` package, then do some recoding. 
+
+```{r recodes}
+# pp. 8-10
+# education levels
+edu_lbl <- c("Less than high school",
+             "12 years or completed high school",
+             "Some college",
+             "College graduate or higher")
+# general health status
+health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
+# convenience function to show percentages to four places like SAS
+percent <- function(x, decimals = 4) round(100 * x, decimals)
+# import SAS data set directly from .zip file
+hints5_4 <- read_sas(
+  unz(
+    here("data", "raw", "HINTS5_Cycle4_SAS_20210309.zip"),
+                         "hints5_cycle4_public.sas7bdat")
+  ) %>% 
+  mutate(# code BirthGender as binary male-female
+    gender = factor(BirthGender, 1:2, c("Male", "Female")),
+         # recode negative GeneralHealth values to missing
+         GeneralHealth = if_else(GeneralHealth < 0, NA_real_, GeneralHealth),
+         # collapse education to four levels
+         edu = case_when(Education %in% 1:2 ~ 1,
+                         Education == 3     ~ 2,
+                         Education %in% 4:5 ~ 3,
+                         Education %in% 6:7 ~ 4,
+                         TRUE ~ NA_real_)) %>% 
+  # change edu from numeric to factor
+  mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl),
+         # "No" must be the referent level of SeekCancerInfo to model the 
+         #   probability of "Yes". By default the first level of a factor is 
+         #   the referent level; reversing the order of levels so that
+         #   "No" is the referent.
+         SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
+                                 labels = c("No", "Yes")))
+```
+
+Analyzing complex survey data in R requires a survey object that contains information about the sampling design and the survey data. For a replicate-weight design, we need to specify
+
+* The data frame containing the survey data
+* The variable containing the final sampling weight
+* The variables containing the replicate weights
+* The type of replication weights, such as jackknife or balanced repeated replication
+
+This is accomplished with the following code.
+
+```{r survey_rep, warning = FALSE}
+# construct replicate weights survey object
+hints5_4_rep <- as_survey_rep(hints5_4, weights = "PERSON_FINWT0",
+                              repweights = paste0("PERSON_FINWT", 1:50),
+                              type = "JK1", scale = 49/50, mse = TRUE)
+
+```
+
+Using `survey_mean()` from `{srvyr}` I'll generate a cross-frequency table of education by gender, along with a Wald chi-squared test of independence. The following code produces a table of unweighted sample sizes and percentages of gender within each education level along with confidence intervals.
+
+#### Frequency table and chi-square test
+
+```{r table_1, warning=FALSE}
+# na.rm argument being ignored; NA comes up as separate level
+# bug?
+# need to add line to filter out missings to get correct results
+# pp. 10-11
+
+tbl_1 <- hints5_4_rep %>% 
+  # remove missings in either table variable to get correct unweighted 
+  #   sample sizes
+  filter(!is.na(edu), !is.na(gender)) %>% 
+  # compute unweighted sample sizes by education level and gender
+  group_by(edu, gender) %>% 
+  # compute unweighted sample sizes and weighted percentage with standard
+  #   errors and confidence intervals
+  summarize(n = unweighted(n()),
+            pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) %>% 
+  drop_na() %>% 
+  mutate_at(vars(starts_with("pct")), percent)
+
+tbl_1 %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+To perform the chi-square test we use `svychisq()` from `{survey}`. Wald and adjusted Wald tests are available.
+
+```{r chi_sq_rep}
+svychisq(~ edu + gender, hints5_4_rep, statistic = "Wald") %>% 
+  tidy() %>% 
+  kable() %>% 
+  kable_styling()
+
+svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>%
+  tidy() %>% 
+  kable() %>% 
+  kable_styling()
+
+
+```
+
+Results match the table on page 11.
+
+#### Multivariable logistic regression of gender and education on `SeekCancerInfo`
+##### Page 11-13
+
+This example illustrates a multivariable logistic regression model using the `svyglm()` function from `{survey}`. The first argument is a modeling formula, the second is the survey object, and the third specifies a binary response with logit link function. Store the fitted model in an object so that you can extract fitted values, residuals, and model metrics. For a logistic regression model use the argument `family = quasibinomial`. 
+
+```{r logistic}
+model03 <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+                  family = quasibinomial)
+
+```
+
+To test for model effects, use the `regTermTest()` function. The first argument is the model object and the second is the model term or terms being tested (as a formula). Note the `df = 49` argument that adjusts for the replicate weight design. See the discussion "Denominator Degrees of Freedom (DDF)" on page 7 of the guidelines. These results match the "Type 3 Analysis of Effects" table on page 17.
+
+```{r test_terms}
+regTermTest(model03, ~ gender, df = 49)
+regTermTest(model03, ~ edu, df = 49)
+
+```
+
+To obtain odds ratios with confidence intervals, exponentiate the model coefficients and interval endpoints. Note the `ddf = 49` argument to the `tidy()` function. Results match the "Odds Ratio Estimates" table on page 13. 
+
+```{r odds_ratios}
+# odds ratios
+tidy(model03, conf.int = TRUE, exponentiate = TRUE, ddf = 49) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+### Mention relative risk regression
+
+#### Multivariable linear regression of gender and education on `GeneralHealth`
+
+Although `GeneralHealth` is actually a categorical variable I'll follow the guidelines and treat it as continuous for purposes of discussion. Here's the linear regression model fitting `GeneralHealth` against education and gender. Since we're doing a standard linear regression we don't need the `family` argument. This code reproduces the results on page 13.
+
+```{r lin_model}
+# pp. 13-14
+model04 <- svyglm(GeneralHealth ~ gender + edu, hints5_4_rep)
+tidy(model04) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+```{r chi_sq_lin}
+regTermTest(model04, ~ gender + edu)
+regTermTest(model04, ~ gender)
+regTermTest(model04, ~ edu)
+
+```
+
+#### Taylor series linearization variance estimation method
+
+Replication is the recommended method for variance estimation in HINTS. The variables VAR_CLUSTER and VAR_STRATUM are provided for variance estimation using Taylor series linearization. These variables are provided for users of software packages, such as SPSS, which don't support replicate weights. The following code constructs the survey object for analyzing the combined sample (no group differences) and replicates the results on pages 14 and 15. Standard errors and confidence intervals differ slightly from those obtained using replicate weights.
+
+```{r taylor, warning=FALSE}
+# pp. 14-15
+hints5_4_lin <- 
+  as_survey_design(hints5_4, ids = VAR_CLUSTER, strata = VAR_STRATUM, 
+                   weight = PERSON_FINWT0, nest = TRUE)
+hints5_4_lin %>% 
+  filter(!is.na(edu), !is.na(gender)) %>% 
+  group_by(edu, gender) %>% 
+  summarize(n = unweighted(n()),
+            pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) %>% 
+  drop_na() %>% 
+  mutate_at(vars(starts_with("pct")), percent) %>% 
+  kable() %>% 
+  kable_styling()
+
+```
+
+```{r chi_sq_taylor}
+svychisq(~ edu + gender, hints5_4_lin, statistic = "Wald") %>% 
+  tidy() %>% 
+  kable() %>% 
+  kable_styling()
+
+svychisq(~ edu + gender, hints5_4_lin, statistic = "adjWald") %>% 
+  tidy() %>% 
+  kable() %>% 
+  kable_styling()
+
+   
+# RESUME HERE
+```
+
+### Discuss merging different cycles and multiple modes in Cycle 3
+
+I'll begin with analyses of the composite sample. Later I'll discuss methods for assessing and dealing with group differences.
+
+## Conclusion
+
+The R language, with the packages `survey` and `srvyr`, provides an effective means for analyzing HINTS data without the need for expensive proprietary software.
+
