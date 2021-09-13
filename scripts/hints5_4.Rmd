@@ -24,6 +24,7 @@ library(survey)
 library(tidyr)
 library(kableExtra)
 library(here)
+library(flextable)
 ```
 
 # Introduction
@@ -131,9 +132,11 @@ tbl_1 <- hints5_4_rep %>%
   drop_na() %>% 
   mutate_at(vars(starts_with("pct")), percent)
 
-tbl_1 %>% 
-  kable() %>% 
-  kable_styling()
+tbl_1_ft <- flextable(tbl_1)
+tbl_1_ft
+# tbl_1 %>% 
+#   kable() %>% 
+#   kable_styling()
 ```
 
 To perform the chi-square test we use `svychisq()` from `{survey}`. Wald and adjusted Wald tests are available.
