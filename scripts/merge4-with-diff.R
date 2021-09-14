@@ -12,8 +12,6 @@ library(forcats)
 library(srvyr)
 library(here)
 
-percentage <- function(x, decimals = 4) round(100 * x, decimals)
-
 # Cycle 1
 # sampling weight and replicate weights 1-50
 cycle1a <- read_sas(unz(here("data", "raw", "HINTS-5_Cycle1_SAS.zip"),
@@ -124,7 +122,7 @@ results4 <- hints5_svy_with_diff %>%
   group_by(survey, treatment, ChanceAskQuestions) %>%
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE)) %>%
-  mutate_at(vars(starts_with("pct")), percentage)
+  mutate_at(vars(starts_with("pct")), ~ 100 * .x)
 
 # LOOKS GOOD--MATCHES SAS!
 

@@ -8,7 +8,6 @@ library(forcats)
 library(srvyr)
 library(here)
 
-percentage <- function(x, decimals = 4) round(100 * x, decimals)
 
 # Merge four cycles with no group differences -----------------------------
 # assuming no differences between the three modalities of HINTS 5 Cycle 3, so
@@ -115,7 +114,7 @@ hints5_svy_no_diff %>%
   group_by(survey, ChanceAskQuestions) %>%
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE)) %>%
-  mutate(across(starts_with("pct"), percentage))
+  mutate(across(starts_with("pct"), ~ 100 * .x))
 # RECHECK THIS AGAINST SAS--2021-08-03
 
 
