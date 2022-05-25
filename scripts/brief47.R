@@ -1,13 +1,10 @@
 # Reproducing results from HINTS brief 47
 # https://hints.cancer.gov/docs/Briefs/HINTS_Brief_47.pdf
 
-library(broom)
 library(dplyr)
 library(haven)
-library(purrr)
 library(srvyr)
 library(survey)
-library(tidyr)
 library(here)
 library(forcats)
 
