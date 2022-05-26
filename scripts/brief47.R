@@ -28,10 +28,15 @@ hints5_4 %>%
 # Percentage of Americans who think cancer can result from drinking too much
 #   alcohol (2019)
 
+factorAlcohol <- function(x) factor(x, 1:3, c("Yes", "No", "Don't know"))
+
+# make all alcohol questions about relations to other conditions into factors
 hints5_3 <- read_sas(unz(here("data", "raw", "HINTS5_Cycle3_SAS_03112020.zip"),
                          "hints5_cycle3_public.sas7bdat")) %>% 
-  mutate(AlcoholConditions_Cancer = factor(AlcoholConditions_Cancer, 1:3,
-                                           c("Yes", "No", "Don't know"))) %>% 
+  mutate(across(starts_with("AlcoholConditions"), factorAlcohol)) %>% 
+  # mutate(AlcoholConditions_Cancer = factorAlcohol(AlcoholConditions_Cancer))
+  # mutate(AlcoholConditions_Cancer = factor(AlcoholConditions_Cancer, 1:3,
+  #                                          c("Yes", "No", "Don't know"))) %>% 
   # assuming no differences between modalities;
   as_survey_rep(weights = "TG_all_FINWT0",
                 repweights = paste0("TG_all_FINWT", 1:50),
@@ -42,3 +47,21 @@ hints5_3 %>%
   summarize(pct = survey_mean(vartype = "ci")) %>% 
   mutate(across(starts_with("pct"), ~ 100 * .x))
 # matches brief
+
+# Kiviniemi et al. (2021)
+# Limitations in American adults’ awareness of and beliefs about alcohol as a 
+#   risk factor for cancer
+# https://doi.org/10.1016/j.pmedr.2021.101433
+
+# Table 1, select results
+# cancer risk, all respondents
+hints5_3 %>% 
+  summarize(pct_cancer = survey_mean(AlcoholConditions_Cancer == "Yes",
+                                     na.rm = TRUE, vartype = "ci"))
+# cancer risk, excluding Don't Know
+hints5_3 %>% 
+  filter(AlcoholConditions_Cancer != "Don't know") %>% 
+  summarize(pct_cancer = survey_mean(AlcoholConditions_Cancer == "Yes",
+                                     na.rm = TRUE, vartype = "ci"))
+
+
