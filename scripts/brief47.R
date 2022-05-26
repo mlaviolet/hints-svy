@@ -28,15 +28,12 @@ hints5_4 %>%
 # Percentage of Americans who think cancer can result from drinking too much
 #   alcohol (2019)
 
+# make all alcohol questions about relations to other conditions into factors
 factorAlcohol <- function(x) factor(x, 1:3, c("Yes", "No", "Don't know"))
 
-# make all alcohol questions about relations to other conditions into factors
 hints5_3 <- read_sas(unz(here("data", "raw", "HINTS5_Cycle3_SAS_03112020.zip"),
                          "hints5_cycle3_public.sas7bdat")) %>% 
   mutate(across(starts_with("AlcoholConditions"), factorAlcohol)) %>% 
-  # mutate(AlcoholConditions_Cancer = factorAlcohol(AlcoholConditions_Cancer))
-  # mutate(AlcoholConditions_Cancer = factor(AlcoholConditions_Cancer, 1:3,
-  #                                          c("Yes", "No", "Don't know"))) %>% 
   # assuming no differences between modalities;
   as_survey_rep(weights = "TG_all_FINWT0",
                 repweights = paste0("TG_all_FINWT", 1:50),
