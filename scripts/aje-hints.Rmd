@@ -1,0 +1,85 @@
+---
+title: "Analyzing the HINTS Survey with R"
+author: "ML"
+date: "`r format(Sys.time(), '%Y-%m-%d, %H:%M')`"
+output: html_document
+bibliography: references.bib
+csl: american-journal-of-epidemiology.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Abstract
+
+The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to collect nationally representative data about the American public's knowledge of, attitudes toward, and use of cancer- and health-related information. NCI provides supporting documentation and public-use data formatted for the proprietary systems SAS, SPSS, and Stata. The free, open-source R software has all functionality needed to analyze HINTS data, but NCI does not currently provide support for R users. This article demonstrates how R can be used to analyze HINTS data with examples drawn from HINTS documentation and published research.
+
+### Introduction
+
+#### About the survey
+
+The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information (CITE). HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history.
+
+HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common propietary statistical software systems: SAS, SPSS, and Stata. This article aims to demonstrate that analysis can be conducted using the free, open-source environment R (CITE), and thus make these valuable data useful to analysts without access to expensive proprietary software.
+
+#### HINTS Methodology
+
+The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles over the course of four years. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design (CITE). For Cycle 3, a subset of participants were sampled from the same frame and also recruited by mail but were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
+
+(CITE Cycle 4 Methodology Report)
+
+For each adult, person-level weights and a set of 50 replicate weights are provided. These replicate weights are used to calculate variance estimates (e.g. standard errors and confidence intervals) using the delete one jackknife (JK1) replication method. Replication is the recommended method for variance estimation for HINTS, but some software packages (SPSS) lack a replication option and only support variance estimation via Taylor series linearization. Although HINTS data files provide the appropriate variables to do so, in this article we limit attention to replication.
+
+(CITE reference to replicate weights)
+
+### R
+
+R (CITE) is a free software environment for statistical computing and graphics. It compiles and runs on a wide variety of platforms, including Microsoft Windows, MacOS, and major Linux distributions. At this writing, the current version is 4.2.0, released April 2022. R is typically run under an integrated development environment; the most popular is RStudio (CITE).
+
+Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`.
+
+Resources for learning R include the books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
+
+Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package, which provides functionality comparable to SUDAAN (CITE) and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all the information needed to specify the survey design, such as primary sampling units, strata, and weight. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
+
+The `{srvyr}` package uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` package produces data sets of results for convenient manipulation.
+
+To begin an analysis, we launch RStudio, then install and load the necessary packages. Installation is generally done only once.
+
+```{r install_packages, eval = FALSE}
+install.packages(c("tidyverse", "survey", "srvyr", "svyVGAM", "broom", "haven", "flextable", "here"))
+
+```
+
+Packages are available for use once loaded.
+
+```{r load_packages, message=FALSE}
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(svyVGAM)
+library(broom)
+library(haven)
+library(flextable)
+library(here)
+```
+
+### Replicating results from HINTS documentation
+
+```{r}
+# education levels
+edu_lbl <- c("Less than high school",
+             "12 years or completed high school",
+             "Some college",
+             "College graduate or higher")
+# general health status
+health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
+# convenience function to show percentages to four places like SAS
+percent <- function(x, decimals = 4) round(100 * x, decimals)
+
+```
+
+### Replicating results from published research
+
+### References
