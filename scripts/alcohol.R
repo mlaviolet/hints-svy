@@ -73,12 +73,17 @@ svychisq(~ AlcoholConditions_Cancer_binary +
 # multinomial logistic regression
 # https://cran.r-project.org/web/packages/svyVGAM/index.html
 # https://tech.popdata.org/pma-data-hub/posts/2021-08-15-covid-analysis
+# https://stats.oarc.ucla.edu/sas/output/multinomial-logistic-regression
+# https://stats.oarc.ucla.edu/r/dae/multinomial-logistic-regression/
 
-# covariates
-# gender            GenderC (1 = M, 2 = F)
-# age               Age (quant.)
-# education level   Education (quant., 1:7)
-# income level               IncomeRanges (quant., 1:9)
+ice_cream <- foreign::read.dta("https://stats.idre.ucla.edu/stat/stata/output/mlogit.dta")
+
+
+# covariates, all quantitative except as indicated
+# gender            GenderC (categorical, 1 = M, 2 = F)
+# age               Age
+# education level   Education
+# income level               IncomeRanges)
 # race/Hispanic              RaceEthn
 #                              1 Hispanic 
 #                              2 Non-Hispanic White
@@ -87,9 +92,10 @@ svychisq(~ AlcoholConditions_Cancer_binary +
 #                              5 Non-Hispanic Asian 
 #                              6 Non-Hispanic Native Hawaiian or other Pacific Islander
 #                              7 Non-Hispanic Multiple Races Mentioned
-# family history of cancer   FamilyEverHadCancer (1 = Yes, 2 = No, 4 = Not sure)
-# ever sought cancer info    SeekCancerInfo (1 = Yes, 2 = No)
-# average drinks per week    AvgDrinksPerWeek (quant.)
+# family history of cancer   FamilyEverHadCancer (categorical, 1 = Yes, 2 = No, 
+#                              4 = Not sure, apparently omitted)
+# ever sought cancer info    SeekCancerInfo (categorical, 1 = Yes, 2 = No)
+# average drinks per week    AvgDrinksPerWeek
 # absolute risk              ChanceGetCancerNoDX
 #                              1 = Strongly agree 
 #                              2 = Somewhat agree 
