@@ -42,7 +42,7 @@ percent <- function(x, decimals = 4) round(100 * x, decimals)
 # import SAS data set directly from .zip file
 hints5_4 <- read_sas(
   unz(
-    here("data", "raw", "HINTS5_Cycle4_SAS_20210309.zip"),
+    here("data-raw", "HINTS5_Cycle4_SAS_20210309.zip"),
                          "hints5_cycle4_public.sas7bdat")
   ) %>% 
   mutate(# code BirthGender as binary male-female
@@ -110,12 +110,11 @@ svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>%
   kable() %>% 
   kable_styling()
 
-
-
-
 ## ----logistic------------------------------------------------------------------------
 model03 <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
-                  family = quasibinomial) %>% 
+                  family = quasibinomial) 
+
+model03 %>% 
   tidy_and_attach(exp = TRUE) %>% 
   tidy_remove_intercept() %>% 
   tidy_add_reference_rows() %>% 
@@ -130,8 +129,10 @@ model03 <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep,
 regTermTest(model03, ~ gender, df = 49)
 regTermTest(model03, ~ edu, df = 49)
 
-svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
-       family = quasibinomial(log), start = c(-0.5, 0, 0, 0, 0)) %>% 
+model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+       family = quasibinomial(log), start = c(-0.5, 0, 0, 0, 0)) 
+
+model_rr %>% 
   tidy_and_attach(exp = TRUE) %>% 
   tidy_remove_intercept() %>% 
   # tidy_add_reference_rows() %>% 
@@ -140,7 +141,7 @@ svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep,
          rr_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3))
 
-
+chk1 <- augment(model_rr)
 
 
 ## ----odds_ratios---------------------------------------------------------------------

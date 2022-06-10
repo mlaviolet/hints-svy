@@ -111,6 +111,7 @@ hints5_4_rep <- read_sas(unz(here("data-raw",
                  type = "JK1", scale = 49/50, mse = TRUE)
 
 ```
+
 #### Frequency tables
 
 The following code produces the frequency table of gender and educational attaintment on page 10.
@@ -149,11 +150,13 @@ bind_rows(wald, adj_wald) %>%
 
 #### Logistic regression
 
-This example demonstrates a multivariable logistic regression model using the `svyglm()` function.
+This example demonstrates a multivariable logistic regression model using the `svyglm()` function. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages to put the results in "tidy" format.
 
 ```{r logit}
-svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
-       family = quasibinomial) %>% 
+model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+       family = quasibinomial) 
+
+model_logit %>% 
   tidy_and_attach(exp = TRUE) %>% 
   tidy_remove_intercept() %>% 
   # tidy_add_reference_rows() %>% 
@@ -164,10 +167,48 @@ svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep,
   flextable()
 ```
 
+As previously noted, the HINTS 5 Cycle 4 database contains a set of 50 replicate weights to compute accurate standard errors for statistical testing procedures. These replicate weights were created using a jackknife minus one replication method; thus when analyzing one iteration or group of HINTS data, the proper denominator degrees of freedom (ddf) is 49. To perform the Type 3 analysis of effects for the logistic regression model, we use the function `regTermTest()`. The `{broom}` package does not currently support tidying the resulting objects.
+
+```{r effect_tests}
+# test for gender effect
+regTermTest(model_logit, ~ gender, df = 49)
+# test for education effect
+regTermTest(model_logit, ~ edu, df = 49)
+
+```
+
+#### Relative risk regression
+
+At this point we present an alternative analysis using relative risk regression using the log link instead of logistic regression using the logit link. While the mathematics of logistic regression is relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010]. 
+
+```{r log_link}
+# Using the log link requires starting values for the estimates. Lumley 
+#   recommends using -0.5 for the intercept and zero for each regression term
+#   (in this case there are four).
+model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+       family = quasibinomial(log), start = c(-0.5, rep(0, 4))) 
+model_rr %>% 
+  tidy_and_attach(exp = TRUE) %>% 
+  tidy_remove_intercept() %>% 
+  tidy_add_term_labels() %>% 
+  select(label, rr = estimate, p.value, rr_low = conf.low, 
+         rr_upp = conf.high) %>% 
+  mutate(p.value = round(p.value, digits = 3)) %>% 
+  flextable()
+```
+Note that since the outcome values are not constrained to the unit interval with a log link, the analyst should check the results. The `augment()` function produces a record-level data set with fitted values, residuals, and other diagnostics. For survey models, the function produces a warning, but I have encountered no issues. The following check shows no fitted probabilities greater than one.
+
+```{r check_rr}
+augment(model_rr) %>% 
+  count(exp(.fitted) > 1)
+```
+
+
+With the relative risk regression, we can make such statements as "women are between five percent and 39 percent more likely than men to look for information about cancer from any source."
 
 ### Replicating results from published research
 
-Drawing examples from 
+Drawing examples from Kiviniemi et al [@kiviniemi2021].
 
 ### References
 
