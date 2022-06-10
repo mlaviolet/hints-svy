@@ -5,6 +5,7 @@ options(digits = 4)
 
 ## ----load-pkgs, echo=FALSE, message=FALSE--------------------------------------------
 library(broom)
+library(broom.helpers)
 library(dplyr)
 library(haven)
 library(purrr)
@@ -14,6 +15,7 @@ library(tidyr)
 library(kableExtra)
 library(here)
 library(flextable)
+
 
 
 ## ----show-pkgs, eval=FALSE-----------------------------------------------------------
@@ -113,13 +115,31 @@ svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>%
 
 ## ----logistic------------------------------------------------------------------------
 model03 <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
-                  family = quasibinomial)
-
+                  family = quasibinomial) %>% 
+  tidy_and_attach(exp = TRUE) %>% 
+  tidy_remove_intercept() %>% 
+  tidy_add_reference_rows() %>% 
+  tidy_add_term_labels() %>% 
+  # tidy_add_variable_labels() %>% 
+  select(label, or = estimate, p.value, or_low = conf.low, 
+                        or_upp = conf.high) %>% 
+  mutate(p.value = round(p.value, digits = 3))
 
 
 ## ----test_terms----------------------------------------------------------------------
 regTermTest(model03, ~ gender, df = 49)
 regTermTest(model03, ~ edu, df = 49)
+
+svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+       family = quasibinomial(log), start = c(-0.5, 0, 0, 0, 0)) %>% 
+  tidy_and_attach(exp = TRUE) %>% 
+  tidy_remove_intercept() %>% 
+  # tidy_add_reference_rows() %>% 
+  tidy_add_term_labels() %>% 
+  select(label, rr = estimate, p.value, rr_low = conf.low, 
+         rr_upp = conf.high) %>% 
+  mutate(p.value = round(p.value, digits = 3))
+
 
 
 

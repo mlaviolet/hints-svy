@@ -2,7 +2,9 @@
 title: "Analyzing the HINTS Survey with R"
 author: "ML"
 date: "`r format(Sys.time(), '%Y-%m-%d, %H:%M')`"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 bibliography: references.bib
 csl: american-journal-of-epidemiology.csl
 ---
@@ -60,6 +62,7 @@ library(survey)
 library(srvyr)
 library(svyVGAM)
 library(broom)
+library(broom.helpers)
 library(haven)
 library(flextable)
 library(here)
@@ -67,7 +70,9 @@ library(here)
 
 ### Replicating results from HINTS documentation
 
-```{r}
+We begin by replicating results from the HINTS documentation (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. Data and documentation are distributed in compressed files for each survey cycle with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
+
+```{r import}
 # education levels
 edu_lbl <- c("Less than high school",
              "12 years or completed high school",
@@ -76,10 +81,94 @@ edu_lbl <- c("Less than high school",
 # general health status
 health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
 # convenience function to show percentages to four places like SAS
-percent <- function(x, decimals = 4) round(100 * x, decimals)
+percent <- function(x, decimals = 2) round(100 * x, decimals)
+
+# import SAS data set directly from .zip file
+hints5_4_rep <- read_sas(unz(here("data-raw",
+                                  "HINTS5_Cycle4_SAS_20210309.zip"),
+                             "hints5_cycle4_public.sas7bdat")) %>% 
+  mutate(# code BirthGender as binary male-female
+    gender = factor(BirthGender, 1:2, c("Male", "Female")),
+    # recode negative GeneralHealth values to missing
+    GeneralHealth = if_else(GeneralHealth < 0, NA_real_, GeneralHealth),
+    # collapse education to four levels
+    edu = case_when(Education %in% 1:2 ~ 1,
+                    Education == 3     ~ 2,
+                    Education %in% 4:5 ~ 3,
+                    Education %in% 6:7 ~ 4,
+                    TRUE ~ NA_real_)) %>% 
+  # change edu from numeric to factor
+  mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl),
+         # "No" must be the referent level of SeekCancerInfo to model the 
+         #   probability of "Yes". By default the first level of a factor is 
+         #   the referent level, so reversing the order of levels to make
+         #   "No" the referent.
+         SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
+                                 labels = c("No", "Yes"))) %>% 
+  # construct replicate weights survey object
+   as_survey_rep(weights = "PERSON_FINWT0",
+                 repweights = paste0("PERSON_FINWT", 1:50),
+                 type = "JK1", scale = 49/50, mse = TRUE)
+
+```
+#### Frequency tables
+
+The following code produces the frequency table of gender and educational attaintment on page 10.
+
+```{r freq_table}
+tbl_1 <- hints5_4_rep %>% 
+  # remove missings in either table variable to get correct unweighted 
+  #   sample sizes
+  filter(!is.na(edu), !is.na(gender)) %>% 
+  # compute unweighted sample sizes by education level and gender
+  group_by(edu, gender) %>% 
+  # compute unweighted sample sizes and weighted percentage with standard
+  #   errors and confidence intervals
+  summarize(n = unweighted(n()),
+            pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) %>% 
+  drop_na() %>% 
+  mutate(across(starts_with("pct"), percent))
+
+flextable(tbl_1)
 
 ```
 
+Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` to put the results in a data set for subsequent processing if desired.
+
+```{r chi_square, message=FALSE, warning=FALSE}
+wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "Wald") %>% 
+  tidy()
+adj_wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>% 
+  tidy() 
+  
+bind_rows(wald, adj_wald) %>%
+  mutate(across(c(statistic, p.value), ~ signif(.x, 3))) %>%
+  flextable()
+
+```
+
+#### Logistic regression
+
+This example demonstrates a multivariable logistic regression model using the `svyglm()` function.
+
+```{r logit}
+svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+       family = quasibinomial) %>% 
+  tidy_and_attach(exp = TRUE) %>% 
+  tidy_remove_intercept() %>% 
+  # tidy_add_reference_rows() %>% 
+  tidy_add_term_labels() %>% 
+  select(label, or = estimate, p.value, or_low = conf.low, 
+                        or_upp = conf.high) %>% 
+  mutate(p.value = round(p.value, digits = 3)) %>% 
+  flextable()
+```
+
+
 ### Replicating results from published research
 
+Drawing examples from 
+
 ### References
+
+Overview of the HINTS 5 Cycle 4 (2020) survey and data analysis recommendations
