@@ -19,13 +19,11 @@ The Health Information National Trends Survey (HINTS) is conducted by the Nation
 
 ### Introduction
 
-#### About the survey
+#### About HINTS
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information (CITE). HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history.
 
 HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common propietary statistical software systems: SAS, SPSS, and Stata. This article aims to demonstrate that analysis can be conducted using the free, open-source environment R (CITE), and thus make these valuable data useful to analysts without access to expensive proprietary software.
-
-#### HINTS Methodology
 
 The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles over the course of four years. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design (CITE). For Cycle 3, a subset of participants were sampled from the same frame and also recruited by mail but were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
 
@@ -35,23 +33,23 @@ For each adult, person-level weights and a set of 50 replicate weights are provi
 
 (CITE reference to replicate weights)
 
-### R
+### About R
 
-R (CITE) is a free software environment for statistical computing and graphics. It compiles and runs on a wide variety of platforms, including Microsoft Windows, MacOS, and major Linux distributions. At this writing, the current version is 4.2.0, released April 2022. R is typically run under an integrated development environment; the most popular is RStudio (CITE).
+R (CITE) is a free software environment for statistical computing and graphics. It compiles and runs on a wide variety of platforms, including Microsoft Windows, MacOS, and major Linux distributions. At this writing, the current version is 4.2.1, released June 2022. R is typically run under an integrated development environment; the most popular is RStudio (CITE).
 
 Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`.
 
 Resources for learning R include the books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
 
-Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package, which provides functionality comparable to SUDAAN (CITE) and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all the information needed to specify the survey design, such as primary sampling units, strata, and weight. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
+Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package, which provides functionality comparable to SUDAAN (CITE) and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all survey design specifications, such as primary sampling units, strata, and weights. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
 
-The `{srvyr}` package uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` package produces data sets of results for convenient manipulation.
+The `{srvyr}` package uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` and `{broom.helpers}` package produce data sets of results for convenient manipulation.
 
 To begin an analysis, we launch RStudio, then install and load the necessary packages. Installation is generally done only once.
 
 ```{r install_packages, eval = FALSE}
-install.packages(c("tidyverse", "survey", "srvyr", "svyVGAM", "broom", "haven", "flextable", "here"))
-
+install.packages(c("tidyverse", "survey", "srvyr", "svyVGAM", "broom", 
+                  "broom.helpers", "haven", "flextable", "here"))
 ```
 
 Packages are available for use once loaded.
@@ -70,7 +68,7 @@ library(here)
 
 ### Replicating results from HINTS documentation
 
-We begin by replicating results from the HINTS documentation (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. Data and documentation are distributed in compressed files for each survey cycle with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
+We begin by replicating results from the HINTS documentation (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. For each survey cycle, data and documentation are distributed in compressed files  with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
 
 ```{r import}
 # education levels
@@ -81,7 +79,7 @@ edu_lbl <- c("Less than high school",
 # general health status
 health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
 # convenience function to show percentages to four places like SAS
-percent <- function(x, decimals = 2) round(100 * x, decimals)
+percent <- function(x) 100 * x
 
 # import SAS data set directly from .zip file
 hints5_4_rep <- read_sas(unz(here("data-raw",
@@ -92,10 +90,10 @@ hints5_4_rep <- read_sas(unz(here("data-raw",
     # recode negative GeneralHealth values to missing
     GeneralHealth = if_else(GeneralHealth < 0, NA_real_, GeneralHealth),
     # collapse education to four levels
-    edu = case_when(Education %in% 1:2 ~ 1,
-                    Education == 3     ~ 2,
-                    Education %in% 4:5 ~ 3,
-                    Education %in% 6:7 ~ 4,
+    edu = case_when(Education %in% 1:2 ~ 1, # less than high school
+                    Education == 3     ~ 2, # high school or equivalent
+                    Education %in% 4:5 ~ 3, # some college
+                    Education %in% 6:7 ~ 4, # college graduate
                     TRUE ~ NA_real_)) %>% 
   # change edu from numeric to factor
   mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl),
@@ -106,15 +104,15 @@ hints5_4_rep <- read_sas(unz(here("data-raw",
          SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
                                  labels = c("No", "Yes"))) %>% 
   # construct replicate weights survey object
-   as_survey_rep(weights = "PERSON_FINWT0",
-                 repweights = paste0("PERSON_FINWT", 1:50),
-                 type = "JK1", scale = 49/50, mse = TRUE)
+  as_survey_rep(weights = "PERSON_FINWT0",
+                repweights = paste0("PERSON_FINWT", 1:50),
+                type = "JK1", scale = 49/50, mse = TRUE)
 
 ```
 
 #### Frequency tables
 
-The following code produces the frequency table of gender and educational attaintment on page 10.
+The following code produces the frequency table of gender and educational attainment on page 10 of the guidelines
 
 ```{r freq_table}
 tbl_1 <- hints5_4_rep %>% 
@@ -122,7 +120,7 @@ tbl_1 <- hints5_4_rep %>%
   #   sample sizes
   filter(!is.na(edu), !is.na(gender)) %>% 
   # compute unweighted sample sizes by education level and gender
-  group_by(edu, gender) %>% 
+  group_by(gender, edu) %>% 
   # compute unweighted sample sizes and weighted percentage with standard
   #   errors and confidence intervals
   summarize(n = unweighted(n()),
@@ -130,7 +128,12 @@ tbl_1 <- hints5_4_rep %>%
   drop_na() %>% 
   mutate(across(starts_with("pct"), percent))
 
-flextable(tbl_1)
+flextable(tbl_1) %>% 
+  colformat_double(digits = 2) %>% 
+  set_header_labels(gender = "Gender", edu = "Education", n = "n", 
+                    pct = "Percent", pct_se = "Std. Err.", 
+                    pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
+  autofit()
 
 ```
 
@@ -138,43 +141,52 @@ Using the `svychisq()` function from `{survey}` we conduct the chi-square test o
 
 ```{r chi_square, message=FALSE, warning=FALSE}
 wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "Wald") %>% 
-  tidy()
+  tidy() %>% 
+  mutate(method = "Wald test of association")
 adj_wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>% 
-  tidy() 
+  tidy() %>% 
+  mutate(method = "Adjusted Wald test of association")
   
 bind_rows(wald, adj_wald) %>%
   mutate(across(c(statistic, p.value), ~ signif(.x, 3))) %>%
-  flextable()
-
+  flextable() %>% 
+  colformat_double(j = 3, digits = 2) %>% 
+  colformat_double(j = 4, digits = 4) %>% 
+  set_header_labels(ndf = "Num DF", ddf = "Den DF", statistic = "F statistic",
+                    p.value = "P value", method = "Method") %>%
+  autofit()
 ```
 
 #### Logistic regression
 
 This example demonstrates a multivariable logistic regression model using the `svyglm()` function. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages to put the results in "tidy" format.
 
-```{r logit}
+```{r logistic}
 model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
        family = quasibinomial) 
-
+# functions from {broom.helpers}
 model_logit %>% 
   tidy_and_attach(exp = TRUE) %>% 
   tidy_remove_intercept() %>% 
-  # tidy_add_reference_rows() %>% 
   tidy_add_term_labels() %>% 
   select(label, or = estimate, p.value, or_low = conf.low, 
-                        or_upp = conf.high) %>% 
+         or_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3)) %>% 
-  flextable()
+  flextable() %>% 
+  colformat_double(j = c(2, 4, 5), digits = 2) %>% 
+  colformat_double(j = 3, digits = 3) %>% 
+  set_header_labels(label = "Model term", or = "Odds ratio", p.value = "P-value",
+          or_low = "95% LCI", or_upp = "95% UCI") %>%
+  autofit()
 ```
 
-As previously noted, the HINTS 5 Cycle 4 database contains a set of 50 replicate weights to compute accurate standard errors for statistical testing procedures. These replicate weights were created using a jackknife minus one replication method; thus when analyzing one iteration or group of HINTS data, the proper denominator degrees of freedom (ddf) is 49. To perform the Type 3 analysis of effects for the logistic regression model, we use the function `regTermTest()`. The `{broom}` package does not currently support tidying the resulting objects.
+As previously noted, the HINTS data sets contain a set of 50 replicate weights to compute accurate standard errors for statistical testing procedures. These replicate weights were created using a jackknife minus one replication method; thus when analyzing one iteration or group of HINTS data, the proper denominator degrees of freedom (ddf) is 49. To perform the Type 3 analysis of effects for the logistic regression model, we use the function `regTermTest()`. The `{broom}` package does not currently support tidying the resulting objects.
 
 ```{r effect_tests}
 # test for gender effect
 regTermTest(model_logit, ~ gender, df = 49)
 # test for education effect
 regTermTest(model_logit, ~ edu, df = 49)
-
 ```
 
 #### Relative risk regression
@@ -194,7 +206,13 @@ model_rr %>%
   select(label, rr = estimate, p.value, rr_low = conf.low, 
          rr_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3)) %>% 
-  flextable()
+  flextable() %>% 
+  colformat_double(j = c(2, 4, 5), digits = 2) %>% 
+  colformat_double(j = 3, digits = 3) %>% 
+  set_header_labels(label = "Model term", rr = "Risk ratio", p.value = "P-value",
+          rr_low = "95% LCI", rr_upp = "95% UCI") %>%
+  autofit()
+  
 ```
 Note that since the outcome values are not constrained to the unit interval with a log link, the analyst should check the results. The `augment()` function produces a record-level data set with fitted values, residuals, and other diagnostics. For survey models, the function produces a warning, but I have encountered no issues. The following check shows no fitted probabilities greater than one.
 
@@ -203,8 +221,39 @@ augment(model_rr) %>%
   count(exp(.fitted) > 1)
 ```
 
-
 With the relative risk regression, we can make such statements as "women are between five percent and 39 percent more likely than men to look for information about cancer from any source."
+
+### Linear regression
+
+Following the guidelines, for the purpose of discussion we treat `General Health` as a quantitative variable.
+
+```{r}
+# pp. 13-14
+model_lin <- svyglm(GeneralHealth ~ gender + edu, hints5_4_rep)
+model_lin %>% 
+  tidy_and_attach() %>% 
+  tidy_remove_intercept() %>% 
+  tidy_add_term_labels() %>% 
+  select(label, estimate, std.error, conf.low, conf.high, p.value) %>% 
+  mutate(p.value = round(p.value, digits = 3)) %>% 
+  flextable() %>% 
+  colformat_double(j = c(2:5), digits = 4) %>% 
+  colformat_double(j = 6, digits = 3) %>% 
+  set_header_labels(label = "Model term", estimate = "Coefficient",
+          std.error = "Std. Err.", conf.low = "95% LCI", conf.high = "95% UCI",
+                    p.value = "P-value") %>%
+  autofit()
+
+```
+
+```{r lin_effects}
+regTermTest(model_lin, ~ gender + edu)
+regTermTest(model_lin, ~ gender)
+regTermTest(model_lin, ~ edu)
+
+```
+
+
 
 ### Replicating results from published research
 
