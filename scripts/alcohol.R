@@ -29,8 +29,6 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
   mutate(across(starts_with("AlcoholConditions"),
                 collapseToYesNo, .names = "{.col}_uncertain")) 
   
-
-
 # Table 1, select results
 # cancer risk, all respondents
 hints5_3 %>% 
