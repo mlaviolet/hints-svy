@@ -4,6 +4,33 @@
 #   risk factor for cancer
 # https://doi.org/10.1016/j.pmedr.2021.101433
 
+library(dplyr)
+library(haven)
+library(srvyr)
+library(survey)
+library(here)
+library(forcats)
+
+# collapse Yes and No to make 2 x 2 tables
+collapseToYesNo <- function(x) fct_collapse(x, Certain = c("Yes", "No"))
+# exclude "Don't Know"
+removeDontKnow <- function(x) factor(x, 1:2, c("Yes", "No"))
+
+
+# have to think about this
+hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+                         "hints5_cycle3_public.sas7bdat")) %>% 
+  # exclude "Don't Know"
+  mutate(across(starts_with("AlcoholConditions"),
+                removeDontKnow, .names = "{.col}_certain")) %>% 
+  mutate(across(starts_with("AlcoholConditions"), 
+                ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
+  # collapse "Yes" and "No"
+  mutate(across(starts_with("AlcoholConditions"),
+                collapseToYesNo, .names = "{.col}_uncertain")) 
+  
+
+
 # Table 1, select results
 # cancer risk, all respondents
 hints5_3 %>% 
@@ -13,7 +40,8 @@ hints5_3 %>%
 hints5_3 %>% 
   filter(AlcoholConditions_Cancer != "Don't know") %>% 
   summarize(pct_cancer = survey_mean(AlcoholConditions_Cancer == "Yes",
-                                     na.rm = TRUE, vartype = "ci"))
+                                     na.rm = TRUE, vartype = "ci")) %>% 
+  mutate()
 
 hints5_3 %>% 
   mutate(HaveAlcoholBelief = 
