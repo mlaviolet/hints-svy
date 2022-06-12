@@ -11,90 +11,61 @@ library(survey)
 library(here)
 library(forcats)
 
-# collapse Yes and No to make 2 x 2 tables
-collapseToYesNo <- function(x) fct_collapse(x, Certain = c("Yes", "No"))
-# exclude "Don't Know"
-removeDontKnow <- function(x) factor(x, 1:2, c("Yes", "No"))
-
-
-# have to think about this
-hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
-                         "hints5_cycle3_public.sas7bdat")) %>% 
-  # exclude "Don't Know"
-  mutate(across(starts_with("AlcoholConditions"),
-                removeDontKnow, .names = "{.col}_certain")) %>% 
-  mutate(across(starts_with("AlcoholConditions"), 
-                ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
+hints5_3 <- read_stata(unz(here("data-raw", "HINTS5_Cycle3_Stata_20210305.zip"),
+                         "hints5_cycle3_public.dta")) %>% 
+  mutate(across(starts_with("alcoholconditions"), 
+              ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
+  # exclude "Don't know"
+  mutate(across(starts_with("alcoholconditions"), ~ .x, .names = "{.col}_certain")) %>% 
+  mutate(across(ends_with("_certain"), ~ factor(.x, c("Yes", "No")))) %>% 
   # collapse "Yes" and "No"
-  mutate(across(starts_with("AlcoholConditions"),
-                collapseToYesNo, .names = "{.col}_uncertain")) 
-  
-# Table 1, select results
-# cancer risk, all respondents
-hints5_3 %>% 
-  summarize(pct_cancer = survey_mean(AlcoholConditions_Cancer == "Yes",
-                                     na.rm = TRUE, vartype = "ci"))
-# cancer risk, excluding Don't Know
-hints5_3 %>% 
-  filter(AlcoholConditions_Cancer != "Don't know") %>% 
-  summarize(pct_cancer = survey_mean(AlcoholConditions_Cancer == "Yes",
-                                     na.rm = TRUE, vartype = "ci")) %>% 
-  mutate()
-
-hints5_3 %>% 
-  mutate(HaveAlcoholBelief = 
-           fct_collapse(AlcoholConditions_Cancer,
-                        `Alcohol` = c("Yes", "No")),
-         HaveDiabetesBelief = 
-           fct_collapse(AlcoholConditions_Diabetes,
-                        `Diabetes` = c("Yes", "No"))) %>% 
-  svychisq(~ HaveAlcoholBelief + HaveDiabetesBelief, . )
-
-# AlcoholConditions_Cancer, AlcoholConditions_Diabetes
-# AlcoholConditions_HeartDisease, AlcoholConditions_LiverDisease
-
-# Section 6.1
-# ... among those participants who expressed a belief, there was significantly 
-#   more disbelief that alcohol causes cancer than disbelief that it causes the 
-#   other three health conditions; (X2 (1,49) all > 124.1, all p < .001).
-# remove "Don't know" from all four variables, test alcohol against each of 
-#   the other three
-# DO THIS AS A FUNCTION
-hints5_3 %>% 
-  filter(AlcoholConditions_Cancer != "Don't know",
-         AlcoholConditions_LiverDisease != "Don't know") %>% 
-  mutate(AlcoholConditions_Cancer = fct_drop(AlcoholConditions_Cancer),
-         AlcoholConditions_LiverDisease = 
-           fct_drop(AlcoholConditions_LiverDisease)) %>%
-  svychisq(~ AlcoholConditions_Cancer + AlcoholConditions_LiverDisease, .)
-# Diabetes: F = 124.11, ndf = 1, ddf = 49, p-value = 4.947e-15  
-# Heart disease: F = 161.2, ndf = 1, ddf = 49, p-value < 2.2e-16
-# Liver disease: F = 228.31, ndf = 1, ddf = 49, p-value < 2.2e-16
+  mutate(across(starts_with("alcoholconditions"), 
+                ~ fct_collapse(.x, Certain = c("Yes", "No")),
+                .names = "{.col}_uncertain")) %>% 
+  # construct replicate weights survey object
+  as_survey_rep(weights = "tg_all_finwt0",
+                repweights = paste0("tg_all_finwt", 1:50),
+                type = "JK1", scale = 49/50, mse = TRUE)
 
 # "... there was significantly more uncertainty for the cancer link with 
 #    alcohol than for any of the other health conditions (X2(1,49) all > 314.85, 
 #   all p < .001).
-# collapse Yes and No to make 2 x 2 tables
-collapseToBinary <- function(x) {
-  fct_collapse(x, Certain = c("Yes", "No"))
-  }
-  
-# chk1 <- collapseToBinary(hints5_3$variables$AlcoholConditions_Cancer)
-
-hints5_3 <- hints5_3 %>% 
-  mutate(across(starts_with("AlcoholConditions"),
-         collapseToBinary, .names = "{.col}_binary"))
-
-svychisq(~ AlcoholConditions_Cancer_binary + 
-           AlcoholConditions_LiverDisease_binary,
+svychisq(~ alcoholconditions_cancer_uncertain + alcoholconditions_liverdisease_uncertain,
          hints5_3)
 # Liver disease: F = 314.85, ndf = 1, ddf = 49, p-value < 2.2e-16
 # Heart disease: F = 518.42, ndf = 1, ddf = 49, p-value < 2.2e-16
 # Diabetes: F = 512.29, ndf = 1, ddf = 49, p-value < 2.2e-16
 
+# "...among those participants who expressed a belief, there was significantly 
+#  more disbelief that alcohol causes cancer than disbelief that it causes the
+#  other three health conditions; (X2 (1,49) all > 124.1, all p < .001)"
+svychisq(~ alcoholconditions_cancer_certain + alcoholconditions_diabetes_certain,
+         hints5_3)
+# Diabetes: F = 124.11, ndf = 1, ddf = 49, p-value = 4.947e-15  
+# Heart disease: F = 161.2, ndf = 1, ddf = 49, p-value < 2.2e-16
+# Liver disease: F = 228.31, ndf = 1, ddf = 49, p-value < 2.2e-16
+
 # relationship between F and chi-square: with one numerator degree of
 #   freedom, F and chi-square are the same
 # https://www.stata.com/support/faqs/statistics/chi-squared-and-f-distributions/
+
+# Table 1, select results
+# Is alcohol a risk factor? 
+# All respondents
+hints5_3 %>% 
+  filter(!is.na(alcoholconditions_cancer)) %>% 
+  group_by(alcoholconditions_cancer) %>% 
+  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci"))
+# differ slightly in 3rd decimal place; only results that differs from paper
+
+# Is alcohol a risk factor? 
+# Those espousing a belief (excluding those responding don't know)
+hints5_3 %>% 
+  filter(alcoholconditions_cancer != "Don't know") %>% 
+  group_by(alcoholconditions_cancer) %>% 
+  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci"))
+# matches perfectly
+
 
 # multinomial logistic regression
 # https://cran.r-project.org/web/packages/svyVGAM/index.html
@@ -102,15 +73,14 @@ svychisq(~ AlcoholConditions_Cancer_binary +
 # https://stats.oarc.ucla.edu/sas/output/multinomial-logistic-regression
 # https://stats.oarc.ucla.edu/r/dae/multinomial-logistic-regression/
 
-ice_cream <- foreign::read.dta("https://stats.idre.ucla.edu/stat/stata/output/mlogit.dta")
-
+# ice_cream <- foreign::read.dta("https://stats.idre.ucla.edu/stat/stata/output/mlogit.dta")
 
 # covariates, all quantitative except as indicated
-# gender            GenderC (categorical, 1 = M, 2 = F)
-# age               Age
-# education level   Education
-# income level               IncomeRanges)
-# race/Hispanic              RaceEthn
+# gender            genderc (categorical, 1 = M, 2 = F)
+# age               age
+# education level   education
+# income level      incomeranges)
+# race/Hispanic              raceethn
 #                              1 Hispanic 
 #                              2 Non-Hispanic White
 #                              3 Non-Hispanic Black or African American
@@ -118,36 +88,34 @@ ice_cream <- foreign::read.dta("https://stats.idre.ucla.edu/stat/stata/output/ml
 #                              5 Non-Hispanic Asian 
 #                              6 Non-Hispanic Native Hawaiian or other Pacific Islander
 #                              7 Non-Hispanic Multiple Races Mentioned
-# family history of cancer   FamilyEverHadCancer (categorical, 1 = Yes, 2 = No, 
+# family history of cancer   familyeverhadcancer (categorical, 1 = Yes, 2 = No, 
 #                              4 = Not sure, apparently omitted)
-# ever sought cancer info    SeekCancerInfo (categorical, 1 = Yes, 2 = No)
-# average drinks per week    AvgDrinksPerWeek
-# absolute risk              ChanceGetCancerNoDX
+# ever sought cancer info    seekcancerinfo (categorical, 1 = Yes, 2 = No)
+# average drinks per week    avgdrinksperweek
+# absolute risk              chancegetcancernodx
 #                              1 = Strongly agree 
 #                              2 = Somewhat agree 
 #                              3 = Somewhat disagree 
 #                              4 = Strongly disagree
-# worry                      FreqWorryCancerNoDx
+# worry                      freqworrycancernoDx
 #                              1 Not at all
 #                              2 Slightly
 #                              3 Somewhat
 #                              4 Moderately
 #                              5 Extremely
-# everything causes cancer   EverythingCauseCancer (same as ChanceGetCancerNoDX)
-# cancer can't be prevented  PreventNotPossible (same as ChanceGetCancerNoDX)
-# too many recommendations   TooManyRecommendations (same as ChanceGetCancerNoDX)
-# ability to care for own health  OwnAbilityTakeCareHealth
+# everything causes cancer   everythingcausecancer (same as ChanceGetCancerNoDX)
+# cancer can't be prevented  preventnotpossible (same as ChanceGetCancerNoDX)
+# too many recommendations   toomanyrecommendations (same as ChanceGetCancerNoDX)
+# ability to care for own health  ownabilitytakecarehealth
 #                                   1 = Completely confident
 #                                   2 = Very confident
 #                                   3 = Somewhat confident
 #                                   4 = A little confident
 #                                   5 = Not confident at all
-# consideration of future consequences ConsiderFuture (same as ChanceGetCancerNoDX)
+# consideration of future consequences considerfuture (same as ChanceGetCancerNoDX)
 
 
 
-
-         
          
        
      
