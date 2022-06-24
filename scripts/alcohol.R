@@ -4,12 +4,12 @@
 #   risk factor for cancer
 # https://doi.org/10.1016/j.pmedr.2021.101433
 
-library(dplyr)
+library(tidyverse)
 library(haven)
-library(srvyr)
 library(survey)
 library(here)
-library(forcats)
+library(svyVGAM)
+
 
 hints5_3 <- read_stata(unz(here("data-raw", "HINTS5_Cycle3_Stata_20210305.zip"),
                          "hints5_cycle3_public.dta")) %>% 
@@ -67,7 +67,7 @@ hints5_3 %>%
 # matches perfectly
 
 
-# multinomial logistic regression
+# multinomial logistic regression -----------------------------------------
 # https://cran.r-project.org/web/packages/svyVGAM/index.html
 # https://tech.popdata.org/pma-data-hub/posts/2021-08-15-covid-analysis
 # https://stats.oarc.ucla.edu/sas/output/multinomial-logistic-regression
@@ -79,15 +79,13 @@ hints5_3 %>%
 # gender            genderc (categorical, 1 = M, 2 = F)
 # age               age
 # education level   education
-# income level      incomeranges)
-# race/Hispanic              raceethn
-#                              1 Hispanic 
-#                              2 Non-Hispanic White
-#                              3 Non-Hispanic Black or African American
-#                              4 Non-Hispanic American Indian or Alaska Native
-#                              5 Non-Hispanic Asian 
-#                              6 Non-Hispanic Native Hawaiian or other Pacific Islander
-#                              7 Non-Hispanic Multiple Races Mentioned
+# income level      incomeranges
+# race/Hispanic     raceethn5
+#                     1 Non-Hispanic White 
+#                     2 Non-Hispanic Black or African American 
+#                     3 Hispanic 
+#                     4 Non-Hispanic Asian
+#                     5 Non-Hispanic Other (count as NA)
 # family history of cancer   familyeverhadcancer (categorical, 1 = Yes, 2 = No, 
 #                              4 = Not sure, apparently omitted)
 # ever sought cancer info    seekcancerinfo (categorical, 1 = Yes, 2 = No)
@@ -97,7 +95,7 @@ hints5_3 %>%
 #                              2 = Somewhat agree 
 #                              3 = Somewhat disagree 
 #                              4 = Strongly disagree
-# worry                      freqworrycancernoDx
+# worry                      freqworrycancernodx
 #                              1 Not at all
 #                              2 Slightly
 #                              3 Somewhat
@@ -114,10 +112,43 @@ hints5_3 %>%
 #                                   5 = Not confident at all
 # consideration of future consequences considerfuture (same as ChanceGetCancerNoDX)
 
+hints5_3 <- hints5_3 %>% 
+  mutate(genderc = factor(genderc, 2:1, c("Female", "Male"))) %>% 
+  mutate(across(c(familyeverhadcancer, seekcancerinfo),
+                ~ factor(.x, 1:2, c("Yes", "No")))) %>% 
+  mutate(raceethn5 = factor(raceethn5, 1:4, 
+                            c("White", "Black", "Hispanic", "Asian"))) %>% 
+  mutate(across(c(age, education, incomeranges, avgdrinksperweek,
+                  chancegetcancernodx, freqworrycancernodx,
+                  everythingcausecancer, preventnotpossible,
+                  toomanyrecommendations, ownabilitytakecarehealth,
+                  considerfuture),
+                ~ ifelse(.x < 0, NA, .x)))
 
+svy_vglm(
+  formula = alcoholconditions_cancer ~ genderc+ age,
+  family = multinomial(refLevel = "Yes"), design = hints5_3)
+# Error in get(na.action) : invalid first argument
 
-         
-       
-     
- 
+svy_vglm(
+  formula = alcoholconditions_cancer ~ 
+    genderc + familyeverhadcancer + seekcancerinfo + raceethn5 + age + 
+    education + incomeranges + avgdrinksperweek + chancegetcancernodx + 
+    freqworrycancernodx + everythingcausecancer + preventnotpossible + 
+    toomanyrecommendations + ownabilitytakecarehealth + considerfuture,
+  family = multinomial(refLevel = "Yes"), design = hints5_3)
+# Error in get(na.action) : invalid first argument
 
+# In addition: Warning messages:
+#   1: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
+#      iterations terminated because half-step sizes are very small
+#   2: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
+#      some quantities such as z, residuals, SEs may be inaccurate due to 
+#      convergence at a half-step
+#   3: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
+#      iterations terminated because half-step sizes are very small
+#   4: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
+#      some quantities such as z, residuals, SEs may be inaccurate due to 
+#      convergence at a half-step
+
+# t.lumley@auckland.ac.nz
