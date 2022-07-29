@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%Y-%m-%d, %H:%M')`"
 output:
   html_document: default
   word_document: default
+  pdf_document: default
 bibliography: references.bib
 csl: american-journal-of-epidemiology.csl
 ---
@@ -82,9 +83,9 @@ health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
 percent <- function(x) 100 * x
 
 # import SAS data set directly from .zip file
-hints5_4_rep <- read_sas(unz(here("data-raw",
-                                  "HINTS5_Cycle4_SAS_20210309.zip"),
-                             "hints5_cycle4_public.sas7bdat")) %>% 
+hints5_4_rep <- read_sas(
+  unz(here("data-raw", "HINTS5_Cycle4_SAS_20220519.zip"),
+      "HINTS5_Cycle4_SAS_20220519/hints5_cycle4_public.sas7bdat")) %>% 
   mutate(# code BirthGender as binary male-female
     gender = factor(BirthGender, 1:2, c("Male", "Female")),
     # recode negative GeneralHealth values to missing
@@ -99,7 +100,7 @@ hints5_4_rep <- read_sas(unz(here("data-raw",
   mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl),
          # "No" must be the referent level of SeekCancerInfo to model the 
          #   probability of "Yes". By default the first level of a factor is 
-         #   the referent level, so reversing the order of levels to make
+         #   the referent level, so reversing the order of levels makes 
          #   "No" the referent.
          SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
                                  labels = c("No", "Yes"))) %>% 

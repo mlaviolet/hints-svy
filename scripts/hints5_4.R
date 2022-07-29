@@ -41,10 +41,8 @@ health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
 percent <- function(x, decimals = 4) round(100 * x, decimals)
 # import SAS data set directly from .zip file
 hints5_4 <- read_sas(
-  unz(
-    here("data-raw", "HINTS5_Cycle4_SAS_20210309.zip"),
-                         "hints5_cycle4_public.sas7bdat")
-  ) %>% 
+  unz(here("data-raw", "HINTS5_Cycle4_SAS_20220519.zip"),
+      "HINTS5_Cycle4_SAS_20220519/hints5_cycle4_public.sas7bdat")) %>% 
   mutate(# code BirthGender as binary male-female
     gender = factor(BirthGender, 1:2, c("Male", "Female")),
          # recode negative GeneralHealth values to missing
