@@ -38,9 +38,9 @@ Resources for learning R include online tutorials and courses such as [@rtutori]
 
 Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package [@lumley2021], which provides functionality comparable to SUDAAN [@sudaan] and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all survey design specifications, such as primary sampling units, strata, and weights. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
 
-The `{srvyr}` package [@ellis2021] uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` [@wickham2019] suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` and `{broom.helpers}` package produce data sets of results for convenient manipulation.
+The `{srvyr}` package [@ellis2021] uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` [@wickham2019] suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` [@robinson2022] and `{broom.helpers}` [@larmarange2022] packages produce data sets of results for convenient manipulation.
 
-To begin an analysis, we launch RStudio, then install and load the necessary packages. Installation is generally done only once.
+To begin an analysis launch RStudio, then install (done once) and load the necessary packages. Installation is generally done only once.
 
 ```{r install_packages, eval = FALSE}
 install.packages(c("tidyverse", "survey", "srvyr", "svyVGAM", "broom", 
