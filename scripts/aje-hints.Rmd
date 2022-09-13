@@ -69,16 +69,15 @@ library(here)
 
 ### Replicating results from HINTS documentation
 
-We begin by replicating results from the HINTS documentation, which is included in the compressed files containing the data. (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
+For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata [@download]. For HINTS 5 Cycle 4, analysis guidelines are contained in the document "Overview of the HINTS 5 Cycle 4 (2020) Survey and Data Analysis Recommendations" (hereafter "guidelines"). R can import any of the three provided formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
 
 ```{r import}
-# education levels
+# four-level educational attainment
 edu_lbl <- c("Less than high school",
              "12 years or completed high school",
              "Some college",
              "College graduate or higher")
-# general health status
-health_lbl <- c("Excellent", "Very good", "Good", "Fair", "Poor")
+
 # convenience function to show percentages to four places like SAS
 percent <- function(x) 100 * x
 
