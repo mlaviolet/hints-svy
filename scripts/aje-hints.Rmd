@@ -144,6 +144,7 @@ flextable(tbl_1) %>%
   set_header_labels(gender = "Gender", edu = "Education", n = "n", 
                     pct = "Percent", pct_se = "Std. Err.", 
                     pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
+  # line_spacing(space = 1, part = "body")
   autofit()
 ```
 Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` to put the results in a data set for subsequent processing if desired.
@@ -155,8 +156,11 @@ wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "Wald") %>%
 adj_wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>% 
   tidy() %>% 
   mutate(method = "Adjusted Wald test of association")
-  
+```
+
+```{r chi_square_table, echo=FALSE}
 bind_rows(wald, adj_wald) %>%
+  relocate(method) %>% 
   mutate(across(c(statistic, p.value), ~ signif(.x, 3))) %>%
   flextable() %>% 
   colformat_double(j = 3, digits = 2) %>% 
@@ -168,20 +172,23 @@ bind_rows(wald, adj_wald) %>%
 
 #### Logistic regression
 
-This example demonstrates a multivariable logistic regression model using the `svyglm()` function. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages to put the results in "tidy" format.
+This example demonstrates a multivariable logistic regression model using the `svyglm()` function from {survey}. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages.
 
 ```{r logistic}
 model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
        family = quasibinomial) 
-# functions from {broom.helpers}
-model_logit %>% 
-  tidy_and_attach(exp = TRUE) %>% 
+logit_tbl <- model_logit %>% 
+  # functions from {broom.helpers}
+  tidy_and_attach(exp = TRUE) %>% # exponentiate coefficients to get odds ratios
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
+  # 
   select(label, or = estimate, p.value, or_low = conf.low, 
          or_upp = conf.high) %>% 
-  mutate(p.value = round(p.value, digits = 3)) %>% 
-  flextable() %>% 
+  mutate(p.value = round(p.value, digits = 3))
+```
+```{r logistic_table, echo=FALSE}
+flextable(logit_tbl) %>% 
   colformat_double(j = c(2, 4, 5), digits = 2) %>% 
   colformat_double(j = 3, digits = 3) %>% 
   set_header_labels(label = "Model term", or = "Odds ratio", p.value = "P-value",
@@ -200,7 +207,7 @@ regTermTest(model_logit, ~ edu, df = 49)
 
 #### Relative risk regression
 
-At this point we present an alternative analysis using relative risk regression using the log link instead of logistic regression using the logit link. While the mathematics of logistic regression is relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010].
+At this point we present an alternative analysis using relative risk regression using the log link instead of logistic regression using the logit link. While the mathematics of logistic regression are relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010].
 
 ```{r log_link}
 # Using the log link requires starting values for the estimates. Lumley 
@@ -208,14 +215,16 @@ At this point we present an alternative analysis using relative risk regression 
 #   (in this case there are four).
 model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
        family = quasibinomial(log), start = c(-0.5, rep(0, 4))) 
-model_rr %>% 
+model_rr_tbl <- model_rr %>% 
   tidy_and_attach(exp = TRUE) %>% 
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
   select(label, rr = estimate, p.value, rr_low = conf.low, 
          rr_upp = conf.high) %>% 
-  mutate(p.value = round(p.value, digits = 3)) %>% 
-  flextable() %>% 
+  mutate(p.value = round(p.value, digits = 3)) 
+```
+```{r log_link_tbl}
+  flextable(model_rr_tbl) %>% 
   colformat_double(j = c(2, 4, 5), digits = 2) %>% 
   colformat_double(j = 3, digits = 3) %>% 
   set_header_labels(label = "Model term", rr = "Risk ratio", p.value = "P-value",
@@ -237,16 +246,18 @@ With the relative risk regression, we can make such statements as "women are bet
 
 Following the guidelines, for the purpose of discussion we treat `General Health` as a quantitative variable.
 
-```{r}
+```{r lin_reg}
 # pp. 13-14
 model_lin <- svyglm(GeneralHealth ~ gender + edu, hints5_4_rep)
-model_lin %>% 
+model_lin_tbl <- model_lin %>% 
   tidy_and_attach() %>% 
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
   select(label, estimate, std.error, conf.low, conf.high, p.value) %>% 
-  mutate(p.value = round(p.value, digits = 3)) %>% 
-  flextable() %>% 
+  mutate(p.value = round(p.value, digits = 3)) 
+```
+```{r lin_reg_tbl}
+  flextable(model_lin_tbl) %>% 
   colformat_double(j = c(2:5), digits = 4) %>% 
   colformat_double(j = 6, digits = 3) %>% 
   set_header_labels(label = "Model term", estimate = "Coefficient",
@@ -255,6 +266,8 @@ model_lin %>%
   autofit()
 
 ```
+
+Here we test for model effects.
 
 ```{r lin_effects}
 regTermTest(model_lin, ~ gender + edu)
