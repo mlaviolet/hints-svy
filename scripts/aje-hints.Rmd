@@ -18,13 +18,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to collect nationally representative data about the American public's knowledge of, attitudes toward, and use of cancer- and health-related information. NCI provides supporting documentation and public-use data formatted for the proprietary systems SAS, SPSS, and Stata. The free, open-source R software has all functionality needed to analyze HINTS data, but NCI does not currently provide support for R users. This article demonstrates how R can be used to analyze HINTS data with examples drawn from HINTS documentation and published research.
 
-#### About HINTS
+#### Introduction
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information [@healthi]. HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history. Recent publications using HINTS data include [@langford2022], [@sacca2022], and [@kiviniemi2021].
 
-HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common propietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. This article aims to demonstrate that HINTS analysis can be conducted using the free, open-source environment R [@rcoreteam2021], and thus make these valuable data useful to analysts without access to expensive proprietary software.
+HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. This article aims to demonstrate that HINTS analysis can be conducted using the free, open-source system R [@rcoreteam2021], and thus make these valuable data useful to analysts without access to expensive proprietary software.
 
-The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles conducted between 2017 and 2020 [@methodol]. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design. For Cycle 3 a subset of participants were sampled from the same frame and recruited by mail, but were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
+#### About HINTS
+
+The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles conducted between 2017 and 2020 [@methodol]. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design. For Cycle 3 a subset of participants were sampled and recruited by mail, but certain respondents were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
 
 For each adult, person-level weights and a set of 50 replicate weights are provided. These replicate weights are used to calculate variance estimates the delete one jackknife (JK1) replication method [@heeringa2017] (pp. 75-89). Replication is the recommended method for variance estimation, but SPSS lacks a replication option and only supports variance estimation via Taylor series linearization. Although HINTS data files provide the appropriate variables to do so, in this article we limit attention to replication.
 
@@ -32,28 +34,23 @@ For each adult, person-level weights and a set of 50 replicate weights are provi
 
 R is a free software environment for statistical computing and graphics. It compiles and runs on a wide variety of platforms, including Microsoft Windows, MacOS, and major Linux distributions. At this writing, the current version is 4.2.1, released June 2022. R is typically run under an integrated development environment; the most popular is RStudio [@rstudio].
 
-Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`.
-
-Resources for learning R include online tutorials and courses such as [@rtutori], [@rforth], and books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
+Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`. Various arguments control how the function operates; for example, `mean(df$x, na.rm = TRUE)` will compute the mean of the variable `x` in the data set `df`, omitting missing values. Resources for learning R include online tutorials and courses such as [@rtutori], [@rforth], and books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
 
 Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package [@lumley2021], which provides functionality comparable to SUDAAN [@sudaan] and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all survey design specifications, such as primary sampling units, strata, and weights. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
 
-The `{srvyr}` package [@ellis2021] uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` [@wickham2019] suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` [@robinson2022] and `{broom.helpers}` [@larmarange2022] packages produce data sets of results for convenient manipulation.
+The `{srvyr}` package [@ellis2021] uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` [@wickham2019] suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` [@robinson2022] and `{broom.helpers}` [@larmarange2022] packages format analysis reports into data tables for convenient manipulation.
 
-To begin an analysis launch RStudio, then install (done once) and load the necessary packages. Installation is generally done only once.
+Packages are installed to the user's system, typically only once, then loaded as needed. To begin an analysis launch RStudio, then install (if needed) and load the necessary packages.
 
 ```{r install_packages, eval = FALSE}
-install.packages(c("tidyverse", "survey", "srvyr", "svyVGAM", "broom", 
-                  "broom.helpers", "haven", "flextable", "here"))
+install.packages(c("tidyverse", "survey", "srvyr", "broom", 
+                  "broom.helpers", "haven", "flextable"))
 ```
-
-Packages are available for use once loaded.
 
 ```{r load_packages, message=FALSE}
 library(tidyverse)
 library(survey)
 library(srvyr)
-library(svyVGAM)
 library(broom)
 library(broom.helpers)
 library(haven)
