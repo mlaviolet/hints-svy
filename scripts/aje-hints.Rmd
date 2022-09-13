@@ -44,10 +44,19 @@ Packages are installed to the user's system, typically only once, then loaded as
 
 ```{r install_packages, eval = FALSE}
 install.packages(c("tidyverse", "survey", "srvyr", "broom", 
-                  "broom.helpers", "haven", "flextable"))
+                  "broom.helpers", "haven"))
 ```
 
-```{r load_packages, message=FALSE}
+```{r show_packages, eval=FALSE}
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(broom)
+library(broom.helpers)
+library(haven)
+```
+
+```{r load_packages, include=FALSE, message=FALSE}
 library(tidyverse)
 library(survey)
 library(srvyr)
@@ -60,7 +69,7 @@ library(here)
 
 ### Replicating results from HINTS documentation
 
-We begin by replicating results from the HINTS documentation (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
+We begin by replicating results from the HINTS documentation, which is included in the compressed files containing the data. (hereafter "guidelines") for HINTS 5 Cycle 4, for which data were collected between February and May 2020. For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata. R can import each of these formats with the `{haven}`package. We begin by importing the SAS data and recoding the variables of interest. The final step in the sequence below is to construct the replicate survey object with analysis weight `PERSON_FINWT0` and replicate weights `PERSON_FINWT1` through `PERSON_FINWT150`.
 
 ```{r import}
 # education levels
