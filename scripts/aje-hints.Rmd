@@ -223,7 +223,7 @@ model_rr_tbl <- model_rr %>%
          rr_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3)) 
 ```
-```{r log_link_tbl}
+```{r log_link_tbl, echo=FALSE}
   flextable(model_rr_tbl) %>% 
   colformat_double(j = c(2, 4, 5), digits = 2) %>% 
   colformat_double(j = 3, digits = 3) %>% 
@@ -256,7 +256,7 @@ model_lin_tbl <- model_lin %>%
   select(label, estimate, std.error, conf.low, conf.high, p.value) %>% 
   mutate(p.value = round(p.value, digits = 3)) 
 ```
-```{r lin_reg_tbl}
+```{r lin_reg_tbl,echo=FALSE}
   flextable(model_lin_tbl) %>% 
   colformat_double(j = c(2:5), digits = 4) %>% 
   colformat_double(j = 6, digits = 3) %>% 
