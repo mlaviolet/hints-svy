@@ -18,13 +18,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to collect nationally representative data about the American public's knowledge of, attitudes toward, and use of cancer- and health-related information. NCI provides supporting documentation and public-use data formatted for the proprietary systems SAS, SPSS, and Stata. The free, open-source R software has all functionality needed to analyze HINTS data, but NCI does not currently provide support for R users. This article demonstrates how R can be used to analyze HINTS data with examples drawn from HINTS documentation and published research.
 
-#### Introduction
+### Introduction
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information [@healthi]. HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history. Recent publications using HINTS data include [@langford2022], [@sacca2022], and [@kiviniemi2021].
 
-HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. This article aims to demonstrate that HINTS analysis can be conducted using the free, open-source system R [@rcoreteam2021], and thus make these valuable data useful to analysts without access to expensive proprietary software.
+HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. This article aims to demonstrate that HINTS analysis can be conducted using the free, open-source system R [@rcoreteam2021], and thus make these valuable data useful to analysts without access to expensive proprietary software. Damico [@damico2009] has demonstrated how survey analysis results from R agree with those from SAS, Stata, and SUDAAN [@sudaan].
 
-#### About HINTS
+### About HINTS
 
 The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles conducted between 2017 and 2020 [@methodol]. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design. For Cycle 3 a subset of participants were sampled and recruited by mail, but certain respondents were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
 
@@ -36,7 +36,7 @@ R is a free software environment for statistical computing and graphics. It comp
 
 Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`. Various arguments control how the function operates; for example, `mean(df$x, na.rm = TRUE)` will compute the mean of the variable `x` in the data set `df`, omitting missing values. Resources for learning R include online tutorials and courses such as [@rtutori], [@rforth], and books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
 
-Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package [@lumley2021], which provides functionality comparable to SUDAAN [@sudaan] and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all survey design specifications, such as primary sampling units, strata, and weights. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
+Functionality of R is expanded by nearly 19,000 user-contributed add-on packages. Analysis of complex surveys is accomplished by the `{survey}` package [@lumley2021], which provides functionality comparable to SUDAAN and provides summary statistics, generalized linear models, and other analyses for multistage stratified, cluster-sampled, unequally weighted survey samples. With this package the user constructs a survey object which contains the survey data and all survey design specifications, such as primary sampling units, strata, and weights. Analyses are performed by specifying the analysis type desired and referencing the survey object. Unlike SAS and SUDAAN, it is not necessary to specify the survey design for each analysis.
 
 The `{srvyr}` package [@ellis2021] uses functions from `{survey}` to work seamlessly with the popular `{tidyverse}` [@wickham2019] suite of packages, which have become the tools of choice for data science in recent years. The `{srvyr}` package can produce data sets of summary statistics. For model fitting, the `{broom}` [@robinson2022] and `{broom.helpers}` [@larmarange2022] packages format analysis reports into data tables for convenient manipulation.
 
@@ -119,7 +119,7 @@ hints5_4_rep <- hints5_4_rep %>%
                 type = "JK1", scale = 49/50, mse = TRUE)
 ```
 
-#### Frequency tables
+### Frequency tables
 
 The following code produces the frequency table of gender and educational attainment on page 10 of the guidelines.
 
@@ -138,6 +138,7 @@ tbl_1 <- hints5_4_rep %>%
   # survey package reports as proportions, convert to percentage
   mutate(across(starts_with("pct"), ~ 100 * .x))
 ```
+
 ```{r tbl_1, echo=FALSE}
 flextable(tbl_1) %>% 
   colformat_double(digits = 2) %>% 
@@ -147,6 +148,7 @@ flextable(tbl_1) %>%
   # line_spacing(space = 1, part = "body")
   autofit()
 ```
+
 Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` to put the results in a data set for subsequent processing if desired.
 
 ```{r chi_square, message=FALSE, warning=FALSE}
@@ -170,7 +172,7 @@ bind_rows(wald, adj_wald) %>%
   autofit()
 ```
 
-#### Logistic regression
+### Logistic regression
 
 This example demonstrates a multivariable logistic regression model using the `svyglm()` function from {survey}. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages.
 
@@ -187,6 +189,7 @@ logit_tbl <- model_logit %>%
          or_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3))
 ```
+
 ```{r logistic_table, echo=FALSE}
 flextable(logit_tbl) %>% 
   colformat_double(j = c(2, 4, 5), digits = 2) %>% 
@@ -205,7 +208,7 @@ regTermTest(model_logit, ~ gender, df = 49)
 regTermTest(model_logit, ~ edu, df = 49)
 ```
 
-#### Relative risk regression
+### Relative risk regression
 
 At this point we present an alternative analysis using relative risk regression using the log link instead of logistic regression using the logit link. While the mathematics of logistic regression are relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010].
 
@@ -223,6 +226,7 @@ model_rr_tbl <- model_rr %>%
          rr_upp = conf.high) %>% 
   mutate(p.value = round(p.value, digits = 3)) 
 ```
+
 ```{r log_link_tbl, echo=FALSE}
   flextable(model_rr_tbl) %>% 
   colformat_double(j = c(2, 4, 5), digits = 2) %>% 
@@ -256,6 +260,7 @@ model_lin_tbl <- model_lin %>%
   select(label, estimate, std.error, conf.low, conf.high, p.value) %>% 
   mutate(p.value = round(p.value, digits = 3)) 
 ```
+
 ```{r lin_reg_tbl,echo=FALSE}
   flextable(model_lin_tbl) %>% 
   colformat_double(j = c(2:5), digits = 4) %>% 
@@ -275,6 +280,12 @@ regTermTest(model_lin, ~ gender)
 regTermTest(model_lin, ~ edu)
 
 ```
+
+### Special situation: HINTS 5, Cycle 3
+
+All HINTS iterations were administered exclusively by mail, except for HINTS 5, Cycle 3, which included a pilot for online response. Respondents who were part of the pilot were randomly assigned to either of two options: a choice between responding via paper or online, or a choice between responding via paper or online with an additional \$10 incentive for those responding online. NCI strongly recommends that analysts first assess their variables of interest for differences among the three modes. For this purpose, NCI provides a set of 50 replicate weights for the combined sample and a set of 150 replicate weights for the grouped sample.
+
+ADD CODE FOR SETTING UP SURVEY OBJECTS
 
 ### Replicating results from published research
 
