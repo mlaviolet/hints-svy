@@ -114,7 +114,7 @@ hints5_svy_no_diff <- bind_rows(cycle1, cycle2, cycle3, cycle4) %>%
   as_survey_rep(weights = "Merged_NWGT0",
                 repweights = paste0("Merged_NWGT", 1:200), 
                 type = "JK1", scale = 49/50, mse = TRUE)
-rm(cycle1, cycle2, cycle3, cycle4_no_diff)
+rm(cycle1, cycle2, cycle3, cycle4)
 
 # SeekHealthInfo NOT IN CYCLE 4
 # test with ChanceAskQuestions (missings explicit)

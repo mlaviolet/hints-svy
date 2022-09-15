@@ -186,8 +186,7 @@ logit_tbl <- model_logit %>%
   tidy_add_term_labels() %>% 
   # 
   select(label, or = estimate, p.value, or_low = conf.low, 
-         or_upp = conf.high) %>% 
-  mutate(p.value = round(p.value, digits = 3))
+         or_upp = conf.high) 
 ```
 
 ```{r logistic_table, echo=FALSE}
@@ -223,8 +222,7 @@ model_rr_tbl <- model_rr %>%
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
   select(label, rr = estimate, p.value, rr_low = conf.low, 
-         rr_upp = conf.high) %>% 
-  mutate(p.value = round(p.value, digits = 3)) 
+         rr_upp = conf.high) 
 ```
 
 ```{r log_link_tbl, echo=FALSE}
@@ -248,7 +246,7 @@ With the relative risk regression, we can make such statements as "women are bet
 
 ### Linear regression
 
-Following the guidelines, for the purpose of discussion we treat `General Health` as a quantitative variable.
+Like most surveys, nearly all variables in HINTS are categorical. Following the guidelines, for the purpose of presenting linear regression we treat `GeneralHealth` as a quantitative variable. Lower values correspond to better health.
 
 ```{r lin_reg}
 # pp. 13-14
@@ -257,14 +255,13 @@ model_lin_tbl <- model_lin %>%
   tidy_and_attach() %>% 
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
-  select(label, estimate, std.error, conf.low, conf.high, p.value) %>% 
-  mutate(p.value = round(p.value, digits = 3)) 
+  select(label, estimate, p.value, std.error, conf.low, conf.high) 
 ```
 
 ```{r lin_reg_tbl,echo=FALSE}
   flextable(model_lin_tbl) %>% 
-  colformat_double(j = c(2:5), digits = 4) %>% 
-  colformat_double(j = 6, digits = 3) %>% 
+  colformat_double(j = c(2, 4:6), digits = 4) %>% 
+  colformat_double(j = 3, digits = 3) %>% 
   set_header_labels(label = "Model term", estimate = "Coefficient",
           std.error = "Std. Err.", conf.low = "95% LCI", conf.high = "95% UCI",
                     p.value = "P-value") %>%
@@ -281,11 +278,9 @@ regTermTest(model_lin, ~ edu)
 
 ```
 
-### Special situation: HINTS 5, Cycle 3
+### Special situation: HINTS 5 Cycle 3
 
-All HINTS iterations were administered exclusively by mail, except for HINTS 5, Cycle 3, which included a pilot for online response. Respondents who were part of the pilot were randomly assigned to either of two options: a choice between responding via paper or online ("Web option"), or a choice between responding via paper or online with an additional \$10 incentive for those responding online ("Web bonus"). NCI strongly recommends that analysts first assess their variables of interest for differences among the three modes.
-
-First, import and recode the Cycle 3 data.
+All HINTS iterations were administered exclusively by mail, except for HINTS 5 Cycle 3, which included a pilot for online response. Respondents who were part of the pilot were randomly assigned to either of two options: a choice between responding via paper or online ("Web option"), or a choice between responding via paper or online with an additional \$10 incentive for those responding online ("Web bonus"). NCI strongly recommends that analysts first assess their variables of interest for differences among the three modes. First, import and recode the Cycle 3 data.
 
 ```{r import5_3_show, eval=FALSE}
 hints5_3 <- read_sas(unz("HINTS5_Cycle3_SAS_20210305.zip",
@@ -325,9 +320,11 @@ If group differences are significant, the analyst has two options: include the g
 
 ### Replicating results from published research
 
-Drawing examples from Kiviniemi et al .
+Drawing examples from Kiviniemi et al.
 
 ### Combining survey iterations
+
+It is often desirable to combine survey data into a single data set to improve statistical power or assess trends. The guidelines refer to this process as "merging" HINTS survey iterations. The analyst needs to take care to use the correct replicate weights, particularly when the merging includes HINTS 5 Cycle 3. The supplementary material includes code for merging all four cycles of HINTS 5, both with and without adjustment for group differences in HINTS 5 Cycle 3. Data controlling for group differences contain 300 replicate weights; without such controlling there are 200.
 
 ### Conclusion
 
