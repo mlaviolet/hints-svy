@@ -16,10 +16,10 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
                          "hints5_cycle3_public.sas7bdat")) %>% 
   mutate(across(starts_with("AlcoholConditions"), 
               ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
-  # exclude "Don't know"
+  # exclude "Don't know,"  create variable for certain belieif
   mutate(across(starts_with("AlcoholConditions"), ~ .x, .names = "{.col}_certain")) %>% 
   mutate(across(ends_with("_certain"), ~ factor(.x, c("Yes", "No")))) %>% 
-  # collapse "Yes" and "No"
+  # collapse "Yes" and "No," create variable for uncertain belief
   mutate(across(starts_with("AlcoholConditions"), 
                 ~ fct_collapse(.x, Certain = c("Yes", "No")),
                 .names = "{.col}_uncertain")) %>% 
@@ -42,6 +42,8 @@ svychisq(~ AlcoholConditions_Cancer_uncertain + AlcoholConditions_LiverDisease_u
 #  other three health conditions; (X2 (1,49) all > 124.1, all p < .001)"
 svychisq(~ AlcoholConditions_Cancer_certain + AlcoholConditions_Diabetes_certain,
          hints5_3)
+
+
 # Diabetes: F = 124.11, ndf = 1, ddf = 49, p-value = 4.947e-15  
 # Heart disease: F = 161.2, ndf = 1, ddf = 49, p-value < 2.2e-16
 # Liver disease: F = 228.31, ndf = 1, ddf = 49, p-value < 2.2e-16
@@ -64,7 +66,8 @@ hints5_3 %>%
 hints5_3 %>% 
   filter(AlcoholConditions_Cancer != "Don't know") %>% 
   group_by(AlcoholConditions_Cancer) %>% 
-  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci"))
+  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci")) %>% 
+  mutate(across(starts_with("pct"), ~ 100 * .x))
 # matches perfectly
 
 
