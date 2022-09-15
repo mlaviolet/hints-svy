@@ -360,17 +360,39 @@ svychisq(
   hints5_3)
 ```
 
-They further write "Nearly half (43.2%; 95% CI 39.7%, 46.8%) of participants did not believe that drinking too much alcohol causes cancer."
+They further write "Nearly half (43.2%; 95% CI 39.7%, 46.8%) of participants [who expressed a belief] did not believe that drinking too much alcohol causes cancer."
 
-```{r}
-hints5_3 %>% 
+```{r alcohol}
+tbl_5 <- hints5_3 %>% 
   filter(AlcoholConditions_Cancer != "Don't know") %>% 
   group_by(AlcoholConditions_Cancer) %>% 
-  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci")) %>% 
+  summarize(n = unweighted(n()),
+            pct = survey_mean(na.rm = TRUE, vartype = "ci")) %>% 
   mutate(across(starts_with("pct"), ~ 100 * .x))
+
 ```
 
-Kiviniemi et al. also conducted a multinomial logistic regression to assess relationships between the alcohol-cancer link and various covariates. This analysis can be performed in R with the `{svyVGAM}` package [@lumley2022]. [SHORT EXAMPLE]
+```{r tbl_5, echo=FALSE}
+flextable(tbl_5) %>% 
+  colformat_double(digits = 2) %>% 
+  set_header_labels(AlcoholConditions_Cancer = "Believes alcohol causes cancer", 
+                    n = "n", pct = "Percent", pct_se = "Std. Err.", 
+                    pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
+  # colformat_double(j = 4, digits = 2) %>% 
+  colformat_double(j = 3:5, digits = 1) %>% 
+            
+  # line_spacing(space = 1, part = "body")
+  autofit()
+```
+
+Kiviniemi et al. also conducted a multinomial logistic regression to assess relationships between the alcohol-cancer link and various covariates. Similar analyses can be performed in R with the `{svyVGAM}` package [@lumley2022]. For instance, the following code fits a multinomial model with belief that alcohol causes cancer (with Yes as reference level) and covariates gender and age:
+
+```{r multinomial, eval=FALSE}
+svy_vglm(
+  formula = AlcoholConditions_Cancer ~ GenderC+ Age,
+  family = multinomial(refLevel = "Yes"), design = hints5_3)
+
+```
 
 ### Combining survey iterations
 
@@ -378,4 +400,8 @@ It is often desirable to combine survey data into a single data set to improve s
 
 ### Conclusions
 
+This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. The HINTS survey is a source of much valuable data.This capability greatly expands the capacity of analysts to further the goals of the survey.
+
 ### References
+
+
