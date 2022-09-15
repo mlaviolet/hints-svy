@@ -389,7 +389,7 @@ Kiviniemi et al. also conducted a multinomial logistic regression to assess rela
 
 ```{r multinomial, eval=FALSE}
 svy_vglm(
-  formula = AlcoholConditions_Cancer ~ GenderC+ Age,
+  formula = AlcoholConditions_Cancer ~ GenderC + Age,
   family = multinomial(refLevel = "Yes"), design = hints5_3)
 
 ```
