@@ -88,7 +88,7 @@ rm(cycle4a, cycle4b, cycle4c)
 treatment_lbl <- c("Paper only", "Web option", "Web bonus")
 hints5_svy_with_diff <- bind_rows(cycle1, cycle2, cycle3, cycle4) %>% 
   # add variable to distinguish surveys and groups
-  # Cycles 1 and 2 were paper only; Cycle 3 was paper and online
+  # Cycles 1 and 2 were paper only; Cycle 3 was paper, web only, web with bonus
   mutate(treatment = case_when(
     survey == 1 ~ 1,
     survey == 2 ~ 1,
@@ -96,7 +96,7 @@ hints5_svy_with_diff <- bind_rows(cycle1, cycle2, cycle3, cycle4) %>%
     survey == 3 & Treatment_H5C3 == 2 ~ 2,
     survey == 3 & Treatment_H5C3 == 3 ~ 3,
     survey == 4 ~ 1)) %>% 
-  mutate_at("survey", factor, 1:4, paste("HINTS 5 Cycle ", 1:4)) %>% 
+  mutate_at("survey", factor, 1:4, paste("HINTS 5 Cycle", 1:4)) %>% 
   mutate_at("treatment", factor, 1:3, treatment_lbl) %>% 
   mutate_at("SeekHealthInfo", factor, labels = c("(Missing)", "Yes", "No")) %>% 
   mutate_at("ChanceAskQuestions", factor, 1:4,
@@ -104,8 +104,7 @@ hints5_svy_with_diff <- bind_rows(cycle1, cycle2, cycle3, cycle4) %>%
   mutate_at("ChanceAskQuestions", fct_explicit_na) %>% 
   mutate_at("ChanceAskQuestions", relevel, "(Missing)") %>% 
   # reorder columns to put treatment and new weights in front
-  select(survey, treatment, PersonID, num_range("Merged_NWGT", 0:300), 
-         everything()) %>% 
+  relocate(survey, treatment, PersonID, num_range("Merged_NWGT", 0:300)) %>% 
   # create replicate weight survey object
   as_survey_rep(weights = "Merged_NWGT0",
                 repweights = paste0("Merged_NWGT", 1:300), 
