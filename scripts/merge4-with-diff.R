@@ -14,8 +14,8 @@ library(here)
 
 # Cycle 1
 # sampling weight and replicate weights 1-50
-cycle1a <- read_sas(unz(here("data", "raw", "HINTS-5_Cycle1_SAS.zip"),
-  "HINTS-5_Cycle1_SAS/hints5_cycle1_public.sas7bdat"))  
+cycle1a <- read_sas(unz(here("data-raw", "HINTS-5_Cycle1_SAS.zip"),
+                        "SAS/hints5_cycle1_public.sas7bdat"))  
 cycle1b <- cycle1a %>% 
   select(PersonID, c(paste0("PERSON_FINWT", 0:50))) %>% 
   rename_at(paste0("PERSON_FINWT", 0:50), ~ paste0("Merged_NWGT", 0:50)) 
@@ -32,8 +32,8 @@ rm(cycle1a, cycle1b, cycle1c)
 # Cycle 2
 # sampling weight and replicate weights 51-100
 cycle2a <- 
-  read_sas(unz(here("data", "raw", "HINTS_5_Cycle_2_SAS_03192020.zip"),
-               "HINTS 5- Cycle 2-SAS-03192020/hints5_cycle2_public.sas7bdat"))
+  read_sas(unz(here("data-raw", "HINTS5_Cycle2_SAS_10132020.zip"),
+               "HINTS 5- Cycle 2-SAS-10132020/hints5_cycle2_public.sas7bdat"))
 cycle2b <- cycle2a %>% 
   select(PersonID, c(paste0("PERSON_FINWT", 0:50))) %>% 
   rename_at(paste0("PERSON_FINWT", 0:50), ~ 
@@ -48,8 +48,9 @@ cycle2 <- list(cycle2a, cycle2b, cycle2c) %>%
 rm(cycle2a, cycle2b, cycle2c)
 
 # cycle 3
-cycle3a <- read_sas(unz(here("data", "raw", "HINTS5_Cycle3_SAS_03112020.zip"),
-                        "hints5_cycle3_public.sas7bdat"))
+cycle3a <- read_sas(
+  unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+      "hints5_cycle3_public.sas7bdat"))
 # final sampling weight and replicate weights 1-100, 251-300
 cycle3b <- cycle3a %>% 
   select(PersonID, c(paste0("nwgt", 0:150))) %>% 
@@ -65,8 +66,9 @@ cycle3 <- list(cycle3a, cycle3b, cycle3c) %>%
 rm(cycle3a, cycle3b, cycle3c)
 
 # cycle 4
-cycle4a <- read_sas(unz(here("data", "raw", "HINTS5_Cycle4_SAS_20210309.zip"),
-                        "hints5_cycle4_public.sas7bdat"))
+cycle4a <- read_sas(
+  unz(here("data-raw", "HINTS5_Cycle4_SAS_20220519.zip"),
+      "HINTS5_Cycle4_SAS_20220519/hints5_cycle4_public.sas7bdat"))
 # final sampling weight and replicate weights 251-300
 cycle4b <- cycle4a %>% 
   select(PersonID, c(paste0("PERSON_FINWT", 0:50))) %>% 
