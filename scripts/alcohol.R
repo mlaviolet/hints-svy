@@ -9,28 +9,29 @@ library(haven)
 library(survey)
 library(here)
 library(svyVGAM)
+library(srvyr)
 
 
-hints5_3 <- read_stata(unz(here("data-raw", "HINTS5_Cycle3_Stata_20210305.zip"),
-                         "hints5_cycle3_public.dta")) %>% 
-  mutate(across(starts_with("alcoholconditions"), 
+hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+                         "hints5_cycle3_public.sas7bdat")) %>% 
+  mutate(across(starts_with("AlcoholConditions"), 
               ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
   # exclude "Don't know"
-  mutate(across(starts_with("alcoholconditions"), ~ .x, .names = "{.col}_certain")) %>% 
+  mutate(across(starts_with("AlcoholConditions"), ~ .x, .names = "{.col}_certain")) %>% 
   mutate(across(ends_with("_certain"), ~ factor(.x, c("Yes", "No")))) %>% 
   # collapse "Yes" and "No"
-  mutate(across(starts_with("alcoholconditions"), 
+  mutate(across(starts_with("AlcoholConditions"), 
                 ~ fct_collapse(.x, Certain = c("Yes", "No")),
                 .names = "{.col}_uncertain")) %>% 
   # construct replicate weights survey object
-  as_survey_rep(weights = "tg_all_finwt0",
-                repweights = paste0("tg_all_finwt", 1:50),
+  as_survey_rep(weights = "TG_all_FINWT0",
+                repweights = paste0("TG_all_FINWT", 1:50),
                 type = "JK1", scale = 49/50, mse = TRUE)
 
 # "... there was significantly more uncertainty for the cancer link with 
 #    alcohol than for any of the other health conditions (X2(1,49) all > 314.85, 
 #   all p < .001).
-svychisq(~ alcoholconditions_cancer_uncertain + alcoholconditions_liverdisease_uncertain,
+svychisq(~ AlcoholConditions_Cancer_uncertain + AlcoholConditions_LiverDisease_uncertain,
          hints5_3)
 # Liver disease: F = 314.85, ndf = 1, ddf = 49, p-value < 2.2e-16
 # Heart disease: F = 518.42, ndf = 1, ddf = 49, p-value < 2.2e-16
@@ -39,7 +40,7 @@ svychisq(~ alcoholconditions_cancer_uncertain + alcoholconditions_liverdisease_u
 # "...among those participants who expressed a belief, there was significantly 
 #  more disbelief that alcohol causes cancer than disbelief that it causes the
 #  other three health conditions; (X2 (1,49) all > 124.1, all p < .001)"
-svychisq(~ alcoholconditions_cancer_certain + alcoholconditions_diabetes_certain,
+svychisq(~ AlcoholConditions_Cancer_certain + AlcoholConditions_Diabetes_certain,
          hints5_3)
 # Diabetes: F = 124.11, ndf = 1, ddf = 49, p-value = 4.947e-15  
 # Heart disease: F = 161.2, ndf = 1, ddf = 49, p-value < 2.2e-16
@@ -53,16 +54,16 @@ svychisq(~ alcoholconditions_cancer_certain + alcoholconditions_diabetes_certain
 # Is alcohol a risk factor? 
 # All respondents
 hints5_3 %>% 
-  filter(!is.na(alcoholconditions_cancer)) %>% 
-  group_by(alcoholconditions_cancer) %>% 
+  filter(!is.na(AlcoholConditions_Cancer)) %>% 
+  group_by(AlcoholConditions_Cancer) %>% 
   summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci"))
 # differ slightly in 3rd decimal place; only results that differs from paper
 
 # Is alcohol a risk factor? 
 # Those espousing a belief (excluding those responding don't know)
 hints5_3 %>% 
-  filter(alcoholconditions_cancer != "Don't know") %>% 
-  group_by(alcoholconditions_cancer) %>% 
+  filter(AlcoholConditions_Cancer != "Don't know") %>% 
+  group_by(AlcoholConditions_Cancer) %>% 
   summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci"))
 # matches perfectly
 
@@ -113,42 +114,28 @@ hints5_3 %>%
 # consideration of future consequences considerfuture (same as ChanceGetCancerNoDX)
 
 hints5_3 <- hints5_3 %>% 
-  mutate(genderc = factor(genderc, 2:1, c("Female", "Male"))) %>% 
-  mutate(across(c(familyeverhadcancer, seekcancerinfo),
+  mutate(GenderC = factor(GenderC, 2:1, c("Female", "Male"))) %>% 
+  mutate(across(c(FamilyEverHadCancer, SeekCancerInfo),
                 ~ factor(.x, 1:2, c("Yes", "No")))) %>% 
-  mutate(raceethn5 = factor(raceethn5, 1:4, 
+  mutate(RaceEthn5 = factor(RaceEthn5, 1:4, 
                             c("White", "Black", "Hispanic", "Asian"))) %>% 
-  mutate(across(c(age, education, incomeranges, avgdrinksperweek,
-                  chancegetcancernodx, freqworrycancernodx,
-                  everythingcausecancer, preventnotpossible,
-                  toomanyrecommendations, ownabilitytakecarehealth,
-                  considerfuture),
+  mutate(across(c(Age, Education, IncomeRanges, AvgDrinksPerWeek,
+                  ChanceGetCancerNoDX, FreqWorryCancerNoDx,
+                  EverythingCauseCancer, PreventNotPossible,
+                  TooManyRecommendations, OwnAbilityTakeCareHealth,
+                  ConsiderFuture),
                 ~ ifelse(.x < 0, NA, .x)))
 
 svy_vglm(
-  formula = alcoholconditions_cancer ~ genderc+ age,
+  formula = AlcoholConditions_Cancer ~ GenderC+ Age,
   family = multinomial(refLevel = "Yes"), design = hints5_3)
-# Error in get(na.action) : invalid first argument
 
 svy_vglm(
-  formula = alcoholconditions_cancer ~ 
-    genderc + familyeverhadcancer + seekcancerinfo + raceethn5 + age + 
-    education + incomeranges + avgdrinksperweek + chancegetcancernodx + 
-    freqworrycancernodx + everythingcausecancer + preventnotpossible + 
-    toomanyrecommendations + ownabilitytakecarehealth + considerfuture,
+  formula = AlcoholConditions_Cancer ~ 
+    GenderC + FamilyEverHadCancer + SeekCancerInfo + RaceEthn5 + Age + 
+    Education + IncomeRanges + AvgDrinksPerWeek + ChanceGetCancerNoDX + 
+    FreqWorryCancerNoDx + EverythingCauseCancer + PreventNotPossible + 
+    TooManyRecommendations + OwnAbilityTakeCareHealth + ConsiderFuture,
   family = multinomial(refLevel = "Yes"), design = hints5_3)
-# Error in get(na.action) : invalid first argument
 
-# In addition: Warning messages:
-#   1: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
-#      iterations terminated because half-step sizes are very small
-#   2: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
-#      some quantities such as z, residuals, SEs may be inaccurate due to 
-#      convergence at a half-step
-#   3: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
-#      iterations terminated because half-step sizes are very small
-#   4: In vglm.fitter(x = x, y = y, w = w, offset = offset, Xm2 = Xm2,  :
-#      some quantities such as z, residuals, SEs may be inaccurate due to 
-#      convergence at a half-step
 
-# t.lumley@auckland.ac.nz
