@@ -378,7 +378,7 @@ flextable(tbl_5) %>%
   set_header_labels(AlcoholConditions_Cancer = "Believes alcohol causes cancer", 
                     n = "n", pct = "Percent", pct_se = "Std. Err.", 
                     pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
-  # colformat_double(j = 4, digits = 2) %>% 
+  colformat_int(j = 2, big.mark = "") %>% 
   colformat_double(j = 3:5, digits = 1) %>% 
             
   # line_spacing(space = 1, part = "body")
