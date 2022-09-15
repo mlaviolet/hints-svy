@@ -105,7 +105,7 @@ hints5_svy_no_diff <- bind_rows(cycle1, cycle2, cycle3, cycle4) %>%
   # reorder columns to put new weights in front
   select(survey, PersonID, num_range("Merged_NWGT", 0:200), everything()) %>% 
   # variable to distinguish survey iterations
-  mutate_at("survey", factor, 1:4, paste("HINTS 5 Cycle ", 1:4)) %>% 
+  mutate_at("survey", factor, 1:4, paste("HINTS 5 Cycle", 1:4)) %>% 
   mutate_at("SeekHealthInfo", factor, labels = c("(Missing)", "Yes", "No")) %>% 
   mutate_at("ChanceAskQuestions", factor, 1:4,
             c("Always", "Usually", "Sometimes", "Never")) %>%
