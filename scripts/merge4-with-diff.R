@@ -124,7 +124,7 @@ results4 <- hints5_svy_with_diff %>%
   group_by(survey, treatment, ChanceAskQuestions) %>%
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE)) %>%
-  mutate_at(vars(starts_with("pct")), ~ 100 * .x)
+  mutate(across(starts_with("pct"), ~ 100 * .x))
 
 # LOOKS GOOD--MATCHES SAS!
 
