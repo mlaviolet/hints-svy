@@ -320,14 +320,62 @@ If group differences are significant, the analyst has two options: include the g
 
 ### Replicating results from published research
 
-Drawing examples from Kiviniemi et al.
+Kiviniemi et al. [@kiviniemi2021] explored American adults' awareness of and beliefs about alcohol as a risk factor for cancer. In this section we replicate selections from their results. Those authors analyzed HINTS 5 Cycle 3 and concluded that collapsing respondents across survey modes was appropriate. First we import the survey data.
+
+```{r import5_3a, echo=FALSE}
+hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+                         "hints5_cycle3_public.sas7bdat"))
+```
+
+```{r import_show_5_3, eval=FALSE}
+hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+                         "hints5_cycle3_public.sas7bdat"))
+```
+
+Recode
+
+```{r recode5_3}
+hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
+                         "hints5_cycle3_public.sas7bdat")) %>% 
+  mutate(across(starts_with("AlcoholConditions"), 
+              ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
+  # exclude "Don't know,"  create variable for certain belief
+  mutate(across(starts_with("AlcoholConditions"), ~ .x, .names = "{.col}_certain"))  %>% 
+  mutate(across(ends_with("_certain"), ~ factor(.x, c("Yes", "No")))) %>% 
+  # collapse "Yes" and "No," create variable for uncertain belief
+  mutate(across(starts_with("AlcoholConditions"), 
+                ~ fct_collapse(.x, Certain = c("Yes", "No")),
+                .names = "{.col}_uncertain")) %>% 
+  # construct replicate weights survey object
+  as_survey_rep(weights = "TG_all_FINWT0",
+                repweights = paste0("TG_all_FINWT", 1:50),
+                type = "JK1", scale = 49/50, mse = TRUE)
+```
+
+The authors write "there was significantly more uncertainty for the cancer link with alcohol than for any of the other health conditions ($X^2$(1,49) all \> 314.85, all p \< .001)."
+
+```{r chisquare5_3}
+svychisq(
+  ~ AlcoholConditions_Cancer_uncertain + AlcoholConditions_LiverDisease_uncertain,
+  hints5_3)
+```
+
+They further write "Nearly half (43.2%; 95% CI 39.7%, 46.8%) of participants did not believe that drinking too much alcohol causes cancer."
+
+```{r}
+hints5_3 %>% 
+  filter(AlcoholConditions_Cancer != "Don't know") %>% 
+  group_by(AlcoholConditions_Cancer) %>% 
+  summarize(pct_cancer = survey_mean(na.rm = TRUE, vartype = "ci")) %>% 
+  mutate(across(starts_with("pct"), ~ 100 * .x))
+```
+
+Kiviniemi et al. also conducted a multinomial logistic regression to assess relationships between the alcohol-cancer link and various covariates. This analysis can be performed in R with the `{svyVGAM}` package [@lumley2022]. [SHORT EXAMPLE]
 
 ### Combining survey iterations
 
 It is often desirable to combine survey data into a single data set to improve statistical power or assess trends. The guidelines refer to this process as "merging" HINTS survey iterations. The analyst needs to take care to use the correct replicate weights, particularly when the merging includes HINTS 5 Cycle 3. The supplementary material includes code for merging all four cycles of HINTS 5, both with and without adjustment for group differences in HINTS 5 Cycle 3. Data controlling for group differences contain 300 replicate weights; without such controlling there are 200.
 
-### Conclusion
+### Conclusions
 
 ### References
-
-Overview of the HINTS 5 Cycle 4 (2020) survey and data analysis recommendations
