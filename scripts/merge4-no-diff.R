@@ -16,7 +16,6 @@ library(forcats)
 library(srvyr)
 library(here)
 
-
 # Merge four cycles with no group differences -----------------------------
 # assuming no differences between the three modalities of HINTS 5 Cycle 3, so
 #   using TG_all_FINWT0 through TG_all_FINWT50 from Cycle 3
