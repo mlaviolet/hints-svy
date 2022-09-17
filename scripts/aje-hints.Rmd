@@ -121,7 +121,7 @@ hints5_4_rep <- hints5_4_rep %>%
 
 ### Frequency tables
 
-The following code produces the frequency table of gender and educational attainment on page 10 of the guidelines.
+The following code produces weighted percentages of educational attainment for each gender. Results match the "column percent" in the SAS output table on page 11 of the guidelines.
 
 ```{r freq_table}
 tbl_1 <- hints5_4_rep %>% 
@@ -133,7 +133,6 @@ tbl_1 <- hints5_4_rep %>%
   #   level and genderwith standard errors and confidence intervals
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) %>% 
-  drop_na() %>% 
   # survey package reports as proportions, convert to percentage
   mutate(across(starts_with("pct"), ~ 100 * .x))
 ```
@@ -145,7 +144,9 @@ flextable(tbl_1) %>%
                     pct = "Percent", pct_se = "Std. Err.", 
                     pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
   # line_spacing(space = 1, part = "body")
-  autofit()
+  autofit() %>% 
+  set_caption("Table")
+
 ```
 
 Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` package to put the results in a data set for subsequent processing if desired.
@@ -380,7 +381,7 @@ flextable(tbl_5) %>%
   autofit()
 ```
 
-Kiviniemi et al. also conducted a multinomial logistic regression to assess relationships between the alcohol-cancer link and various covariates. Similar analyses can be performed in R with the `{svyVGAM}` package [@lumley2022]. For instance, the following code fits a multinomial model with belief that alcohol causes cancer (with Yes as reference level) and covariates gender and age:
+Kiviniemi et al. also conducted a multinomial logistic regression to assess relationships between the alcohol-cancer link and various covariates. Similar analyses can be performed in R with the `{svyVGAM}` package [@lumley2022]. For instance, the following code fits a multinomial model to regress belief that alcohol causes cancer (with Yes as reference level) against gender and age:
 
 ```{r multinomial, eval=FALSE}
 svy_vglm(
@@ -395,7 +396,7 @@ It is often desirable to combine multiple iterations of survey data into a singl
 
 ## Conclusions
 
-This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. The HINTS survey is a source of much valuable data.This capability greatly expands the capacity of analysts to further the goals of the survey.
+This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. The HINTS survey is a source of much valuable data. This capability greatly expands the capacity of analysts to further the goals of the survey.
 
 ## References
 
