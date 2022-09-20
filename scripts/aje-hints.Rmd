@@ -22,13 +22,13 @@ The Health Information National Trends Survey (HINTS) is conducted by the Nation
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information [@healthi]. HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history. Recent publications using HINTS data include Langford et al. [@langford2022], Sacca et al. [@sacca2022], and Kiviniemi et al [@kiviniemi2021].
 
-HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. Damico [@damico2009] has demonstrated how survey analysis results from R using public survey data agree with those from SAS, Stata, and SUDAAN [@sudaan]. This article aims to demonstrate that HINTS analysis can be conducted using the free, open-source system R [@rcoreteam2021], and thus make these valuable data useful to analysts without access to expensive proprietary software. 
+HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. Damico [@damico2009] has demonstrated how survey analysis results from the free, open-source system R [@rcoreteam2021] using public survey data agree with those from SAS, Stata, and SUDAAN [@sudaan]. This article aims to demonstrate that HINTS analysis can be conducted using R and thus make these valuable data useful to analysts without access to expensive proprietary software. 
 
 ## About HINTS
 
 The HINTS target population is civilian, non-institutionalized adults aged 18 or older living in the United States. The most recent version of HINTS administration (referred to as HINTS 5) included four data collection cycles conducted between 2017 and 2020 [@methodol]. Except for Cycle 3, the primary data collection was a mail-based survey with random sampling in a complex sampling frame design. For Cycle 3 a subset of participants were sampled and recruited by mail, but certain respondents were given the option of a web-based survey using one of two different types of web-based administration. Implications for analysis of Cycle 3 are discussed later.
 
-For each adult, person-level weights and a set of 50 replicate weights are provided. These replicate weights are used to calculate variance estimates the delete one jackknife (JK1) replication method [@heeringa2017] (pp. 75-89). Replication is the recommended method for variance estimation, but SPSS lacks a replication option and only supports variance estimation via Taylor series linearization. Although HINTS data files provide the appropriate variables to do so, in this article we limit attention to replication.
+For each adult, person-level weights and a set of 50 replicate weights are provided. These replicate weights are used to calculate variance estimates by the delete one jackknife (JK1) replication method [@heeringa2017] (pp. 75-89). Replication is the recommended method for variance estimation, but SPSS lacks a replication option and only supports variance estimation via Taylor series linearization. Although HINTS data files provide the appropriate variables to do so, in this article we limit attention to replication.
 
 ## About R
 
@@ -69,17 +69,17 @@ library(here)
 
 ## Replicating results from HINTS documentation
 
-For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata [@download]. For HINTS 5 Cycle 4, analysis guidelines are contained in the document "Overview of the HINTS 5 Cycle 4 (2020) Survey and Data Analysis Recommendations" (hereafter "guidelines"). R can import any provided format with the `{haven}`package. We begin by importing the SAS data.
+For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata [@download]. For HINTS 5 Cycle 4, analysis guidelines are contained in the document "Overview of the HINTS 5 Cycle 4 (2020) Survey and Data Analysis Recommendations" (hereafter "guidelines"). R can import any provided format with the `{haven}` package. We begin by importing the SAS data.
 
 ```{r import_show, eval=FALSE}
 # import SAS data set directly from zip file
-hints5_4_rep <- read_sas(
+hints5_4 <- read_sas(
   unz("HINTS5_Cycle4_SAS_20220519.zip",
       "HINTS5_Cycle4_SAS_20220519/hints5_cycle4_public.sas7bdat"))
 ```
 
 ```{r import, echo=FALSE}
-hints5_4_rep <- read_sas(
+hints5_4 <- read_sas(
   unz(here("data-raw", "HINTS5_Cycle4_SAS_20220519.zip"),
       "HINTS5_Cycle4_SAS_20220519/hints5_cycle4_public.sas7bdat"))
 ```
@@ -93,7 +93,7 @@ edu_lbl <- c("Less than high school",
              "Some college",
              "College graduate or higher")
 
-hints5_4_rep <- hints5_4_rep %>% 
+hints5_4 <- hints5_4 %>% 
   mutate(
     # code BirthGender as binary male-female
     gender = factor(BirthGender, 1:2, c("Male", "Female")),
@@ -109,8 +109,8 @@ hints5_4_rep <- hints5_4_rep %>%
   mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl)) %>% 
   # SeekCancerInfo will be used as the outcome in a logistic regression. To
   #   model the probability of "Yes" (coded as 1), "No" must be the referent level. By
-  #   default the first level of a factor is the referent level, so we
-  #   reverse the order of levels.
+  #   default the first level of a factor is the referent level, so we 
+  #   reverse the default order.
   mutate(SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
                                  labels = c("No", "Yes"))) %>% 
   # construct replicate weights survey object
@@ -124,7 +124,7 @@ hints5_4_rep <- hints5_4_rep %>%
 The following code produces weighted percentages of educational attainment for each gender. Results match the "column percent" in the SAS output table on page 11 of the guidelines.
 
 ```{r freq_table}
-tbl_1 <- hints5_4_rep %>% 
+tbl_1 <- hints5_4 %>% 
   # remove missings in either table variable to get correct unweighted 
   #   sample sizes
   filter(!is.na(edu), !is.na(gender)) %>% 
@@ -152,10 +152,10 @@ flextable(tbl_1) %>%
 Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` package to put the results in a data set for subsequent processing if desired.
 
 ```{r chi_square, message=FALSE, warning=FALSE}
-wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "Wald") %>% 
+wald <- svychisq(~ edu + gender, hints5_4, statistic = "Wald") %>% 
   tidy() %>% 
   mutate(method = "Wald test of association")
-adj_wald <- svychisq(~ edu + gender, hints5_4_rep, statistic = "adjWald") %>% 
+adj_wald <- svychisq(~ edu + gender, hints5_4, statistic = "adjWald") %>% 
   tidy() %>% 
   mutate(method = "Adjusted Wald test of association")
 ```
@@ -177,7 +177,7 @@ This example demonstrates a multivariable logistic regression model using the `s
 To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages.
 
 ```{r logistic}
-model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4, 
        family = quasibinomial) 
 logit_tbl <- model_logit %>% 
   # functions from {broom.helpers}
@@ -208,16 +208,16 @@ regTermTest(model_logit, ~ edu, df = 49)
 
 ### Relative risk regression
 
-At this point we present an alternative analysis using relative risk regression using the log link instead of logistic regression using the logit link. While the mathematics of logistic regression are relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010] (pp. 116-117).
+At this point we present an alternative analysis using relative risk regression with the log link instead of logistic regression with the logit link. While the mathematics of logistic regression are relatively straightforward, the resulting odds ratios are easily misinterpreted, especially by lay readers. This issue has been extensively discussed; see for example Osborne [@osborne]. We perform a relative risk regression following recommendations of Lumley [@lumley2010] (pp. 116-117).
 
 ```{r log_link}
-# Using the log link requires starting values for the estimates. Lumley 
+# The log link requires starting values for the estimates. Lumley 
 #   recommends using -0.5 for the intercept and zero for each regression term
 #   (in this case there are four).
-model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4_rep, 
+model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4, 
        family = quasibinomial(log), start = c(-0.5, rep(0, 4))) 
 model_rr_tbl <- model_rr %>% 
-  tidy_and_attach(exp = TRUE) %>% 
+  tidy_and_attach(exp = TRUE) %>% # exporentiate to get risk ratios
   tidy_remove_intercept() %>% 
   tidy_add_term_labels() %>% 
   select(label, rr = estimate, p.value, rr_low = conf.low, 
@@ -234,7 +234,7 @@ model_rr_tbl <- model_rr %>%
   
 ```
 
-Note that since the outcome values are not constrained to the unit interval with a log link, the analyst should check the results. The `augment()` function produces a record-level data set with fitted values, residuals, and other diagnostics. For survey models, the function produces a warning, but I have encountered no issues. The following check shows no fitted probabilities greater than one.
+With a log link the outcome values are not constrained to the unit interval, so the analyst should check the results. The `augment()` function produces a record-level data set with fitted values, residuals, and other diagnostics. For survey models, the function produces a warning, but I have encountered no issues. The following check shows no fitted probabilities greater than one.
 
 ```{r check_rr}
 augment(model_rr) %>% 
@@ -248,7 +248,7 @@ With the relative risk regression, we can make such statements as "women are bet
 Like most surveys, nearly all variables in HINTS are categorical. Following the guidelines, for the purpose of presenting linear regression we treat `GeneralHealth` as a quantitative variable. Lower values correspond to better self-reported health.
 
 ```{r lin_reg}
-model_lin <- svyglm(GeneralHealth ~ gender + edu, hints5_4_rep)
+model_lin <- svyglm(GeneralHealth ~ gender + edu, hints5_4)
 model_lin_tbl <- model_lin %>% 
   tidy_and_attach() %>% 
   tidy_remove_intercept() %>% 
@@ -276,7 +276,7 @@ regTermTest(model_lin, ~ edu)
 
 ```
 
-## Special situation: HINTS 5 Cycle 3
+## Special case: HINTS 5 Cycle 3
 
 All HINTS iterations were administered exclusively by mail, except for HINTS 5 Cycle 3, which included a pilot for online response. Respondents who were part of the pilot were randomly assigned to either of two options: a choice between responding via paper or online ("Web option"), or a choice between responding via paper or online with an additional \$10 incentive for those responding online ("Web bonus"). NCI strongly recommends that analysts first assess their variables of interest for differences among the three modes. First we import and recode the Cycle 3 data.
 
@@ -291,7 +291,7 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
 
 ```
 
-Now construct a survey object allowing for all three modes, using the appropriate weights. Note that the data contain 150 replicate weights (50 for each of the three groups). The variable `Treatment_H5C3` identifies the survey mode.
+Now construct a survey object allowing for all three modes, using the appropriate weights. Note that the data contain 150 replicate weights (50 for each of the three groups). The variable `Treatment_H5C3` identifies the survey mode, `nwgt0` is the person-level weight, and the replicate weights are `nwgt1` through `nwgt150`. 
 
 ```{r svy_grp}
 hints5_3_grp <- hints5_3 %>% 
@@ -396,7 +396,7 @@ It is often desirable to combine multiple iterations of survey data into a singl
 
 ## Conclusions
 
-This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. The HINTS survey is a source of much valuable data. This capability greatly expands the capacity of analysts to further the goals of the survey.
+This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. This capability greatly expands the capacity of analysts to further the goals of the survey.
 
 ## References
 
