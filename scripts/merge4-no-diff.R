@@ -1,3 +1,9 @@
+# This R script is a supplement to the article "Analyzing the HINTS Survey with R." 
+# To run this script, download the data files for HINTS 5, Cycles 3 and 4. 
+#   Then set up an RStudio project and copy this file to a subfolder `scripts` 
+#   and the data files to a subfolder `data-raw`. For more see the link 
+#   https://rfortherestofus.com/2021/08/rstudio-project-structure
+
 # working code to merge all four cycles of HINTS 5 assuming no differences
 #   between Phase 3 modes
 
