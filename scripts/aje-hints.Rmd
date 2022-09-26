@@ -7,7 +7,7 @@ output:
   pdf_document: default
   html_document: default
 bibliography: references.bib
-csl: american-journal-of-epidemiology.csl
+csl: american-medical-association-parentheses.csl
 ---
 
 ```{r setup, include=FALSE}
