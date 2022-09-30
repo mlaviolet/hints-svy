@@ -1,6 +1,6 @@
 ---
 title: "Analyzing the HINTS Survey with R"
-author: "ML"
+author: "Michael Laviolette, PhD MPH"
 date: "`r format(Sys.time(), '%Y-%m-%d, %H:%M')`"
 output:
   word_document: default
@@ -22,7 +22,7 @@ The Health Information National Trends Survey (HINTS) is conducted by the Nation
 
 The Health Information National Trends Survey (HINTS) is conducted by the National Cancer Institute (NCI) to regularly collect nationally representative data about the American public's use of cancer-related information [@healthi]. HINTS topics include looking for health information from the Internet and other sources, personal health care, caregiving, clinical trials, nutrition, physical activity, cancer screening and awareness, beliefs about cancer, and cancer history. Recent publications using HINTS data include Langford et al. [@langford2022], Sacca et al. [@sacca2022], and Kiviniemi et al [@kiviniemi2021].
 
-HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. Damico [@damico2009] has demonstrated how survey analysis results from the free, open-source system R [@rcoreteam2021] using public survey data agree with those from SAS, Stata, and SUDAAN [@sudaan]. This article aims to demonstrate that HINTS analysis can be conducted using R and thus make these valuable data useful to analysts without access to expensive proprietary software. 
+HINTS data with supporting documentation, including analysis examples, are available to the public. Currently this material is available only for the most common proprietary statistical software systems: SAS [@sas], SPSS [@spsssta], and Stata [@statisti]. Damico [@damico2009] has demonstrated how survey analysis results from the free, open-source system R [@rcoreteam2021] using public survey data agree with those from SAS, Stata, and SUDAAN [@sudaan]. This article aims to demonstrate that HINTS analysis can be conducted using R and thus make these valuable data useful to analysts without access to expensive proprietary software.
 
 ## About HINTS
 
@@ -69,7 +69,7 @@ library(here)
 
 ## Replicating results from HINTS documentation
 
-For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata [@download]. For HINTS 5 Cycle 4, analysis guidelines are contained in the document "Overview of the HINTS 5 Cycle 4 (2020) Survey and Data Analysis Recommendations" (hereafter "guidelines"). R can import any provided format with the `{haven}` package. We begin by importing the SAS data.
+For each survey cycle, data and documentation are distributed in compressed files with data formatted for SAS, SPSS, or Stata [@download]. For HINTS 5 Cycle 4, analysis guidelines are contained in the document "Overview of the HINTS 5 Cycle 4 (2020) Survey and Data Analysis Recommendations" (hereafter "guidelines"). R can import any provided format with the `{haven}`[@wickham2022] package. We begin by importing the SAS data.
 
 ```{r import_show, eval=FALSE}
 # import SAS data set directly from zip file
@@ -173,8 +173,7 @@ bind_rows(wald, adj_wald) %>%
 
 ### Logistic regression
 
-This example demonstrates a multivariable logistic regression model using the `svyglm()` function from `{survey}`.
-To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages.
+This example demonstrates a multivariable logistic regression model using the `svyglm()` function from `{survey}`. To construct a data table of results, we use functions from the `{broom}` and `{broom.helpers}` packages.
 
 ```{r logistic}
 model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4, 
@@ -291,7 +290,7 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
 
 ```
 
-Now construct a survey object allowing for all three modes, using the appropriate weights. Note that the data contain 150 replicate weights (50 for each of the three groups). The variable `Treatment_H5C3` identifies the survey mode, `nwgt0` is the person-level weight, and the replicate weights are `nwgt1` through `nwgt150`. 
+Now construct a survey object allowing for all three modes, using the appropriate weights. Note that the data contain 150 replicate weights (50 for each of the three groups). The variable `Treatment_H5C3` identifies the survey mode, `nwgt0` is the person-level weight, and the replicate weights are `nwgt1` through `nwgt150`.
 
 ```{r svy_grp}
 hints5_3_grp <- hints5_3 %>% 
@@ -329,6 +328,7 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
 hints5_3 <- read_sas(unz("HINTS5_Cycle3_SAS_20210305.zip",
                          "hints5_cycle3_public.sas7bdat"))
 ```
+
 ```{r recode5_3}
 hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
                          "hints5_cycle3_public.sas7bdat")) %>% 
@@ -399,5 +399,3 @@ It is often desirable to combine multiple iterations of survey data into a singl
 This article has shown that the free open source R system and its accompanying packages can be used with HINTS data for prevalence estimates, contingency tables, linear regression, logistic regression, relative risk regression, and multinomial logistic regression. This capability greatly expands the capacity of analysts to further the goals of the survey.
 
 ## References
-
-
