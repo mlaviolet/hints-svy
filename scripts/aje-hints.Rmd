@@ -3,11 +3,11 @@ title: "Analyzing the HINTS Survey with R"
 author: "Michael Laviolette, PhD MPH"
 date: "`r format(Sys.time(), '%Y-%m-%d, %H:%M')`"
 output:
-  word_document: default
-  pdf_document: default
   html_document: default
+  pdf_document: default
+  word_document: default
 bibliography: references.bib
-csl: american-medical-association-parentheses.csl
+csl: apa-6th-edition.csl
 ---
 
 ```{r setup, include=FALSE}
@@ -93,7 +93,7 @@ edu_lbl <- c("Less than high school",
              "Some college",
              "College graduate or higher")
 
-hints5_4 <- hints5_4 %>% 
+hints5_4 <- hints5_4 |> 
   mutate(
     # code BirthGender as binary male-female
     gender = factor(BirthGender, 1:2, c("Male", "Female")),
@@ -104,15 +104,16 @@ hints5_4 <- hints5_4 %>%
                     Education == 3     ~ 2, # high school or equivalent
                     Education %in% 4:5 ~ 3, # some college
                     Education %in% 6:7 ~ 4, # college graduate
-                    TRUE ~ NA_real_)) %>% 
+                    TRUE ~ NA_real_)) |> 
   # change edu from numeric to factor
-  mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl)) %>% 
-  # SeekCancerInfo will be used as the outcome in a logistic regression. To
-  #   model the probability of "Yes" (coded as 1), "No" must be the referent level. By
-  #   default the first level of a factor is the referent level, so we 
+  mutate(edu = factor(edu, levels = 1:4, labels = edu_lbl)) |> 
+  # SeekCancerInfo will be used as the outcome in a logistic 
+  #   regression. To model the probability of "Yes" (coded as 
+  #   1), "No" must be the referent level. By default the 
+  #   first level of a factor is the referent level, so 
   #   reverse the default order.
   mutate(SeekCancerInfo = factor(SeekCancerInfo, levels = 2:1, 
-                                 labels = c("No", "Yes"))) %>% 
+                                 labels = c("No", "Yes"))) |> 
   # construct replicate weights survey object
   as_survey_rep(weights = "PERSON_FINWT0",
                 repweights = paste0("PERSON_FINWT", 1:50),
@@ -124,27 +125,27 @@ hints5_4 <- hints5_4 %>%
 The following code produces weighted percentages of educational attainment for each gender. Results match the "column percent" in the SAS output table on page 11 of the guidelines.
 
 ```{r freq_table}
-tbl_1 <- hints5_4 %>% 
+tbl_1 <- hints5_4 |> 
   # remove missings in either table variable to get correct unweighted 
   #   sample sizes
-  filter(!is.na(edu), !is.na(gender)) %>% 
-  group_by(gender, edu) %>% 
+  filter(!is.na(edu), !is.na(gender)) |> 
+  group_by(gender, edu) |> 
   # compute unweighted sample sizes and weighted percentage by education 
   #   level and genderwith standard errors and confidence intervals
   summarize(n = unweighted(n()),
-            pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) %>% 
+            pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) |> 
   # survey package reports as proportions, convert to percentage
   mutate(across(starts_with("pct"), ~ 100 * .x))
 ```
 
 ```{r tbl_1, echo=FALSE}
-flextable(tbl_1) %>% 
-  colformat_double(digits = 2) %>% 
+flextable(tbl_1) |> 
+  colformat_double(digits = 2) |> 
   set_header_labels(gender = "Gender", edu = "Education", n = "n", 
                     pct = "Percent", pct_se = "Std. Err.", 
-                    pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
+                    pct_low = "95% LCI", pct_upp = "95% UCI") |> 
   # line_spacing(space = 1, part = "body")
-  autofit() %>% 
+  autofit() |> 
   set_caption("Table")
 
 ```
@@ -152,22 +153,22 @@ flextable(tbl_1) %>%
 Using the `svychisq()` function from `{survey}` we conduct the chi-square test of association between gender and education. We feed the resulting object to the `tidy()` function from the `{broom}` package to put the results in a data set for subsequent processing if desired.
 
 ```{r chi_square, message=FALSE, warning=FALSE}
-wald <- svychisq(~ edu + gender, hints5_4, statistic = "Wald") %>% 
-  tidy() %>% 
+wald <- svychisq(~ edu + gender, hints5_4, statistic = "Wald") |> 
+  tidy() |> 
   mutate(method = "Wald test of association")
-adj_wald <- svychisq(~ edu + gender, hints5_4, statistic = "adjWald") %>% 
-  tidy() %>% 
+adj_wald <- svychisq(~ edu + gender, hints5_4, statistic = "adjWald") |> 
+  tidy() |> 
   mutate(method = "Adjusted Wald test of association")
 ```
 
 ```{r chi_square_table, echo=FALSE}
-bind_rows(wald, adj_wald) %>%
-  relocate(method) %>% 
-  flextable() %>% 
-  colformat_double(j = 4, digits = 2) %>% 
-  colformat_double(j = 5, digits = 3) %>% 
+bind_rows(wald, adj_wald) |>
+  relocate(method) |> 
+  flextable() |> 
+  colformat_double(j = 4, digits = 2) |> 
+  colformat_double(j = 5, digits = 3) |> 
   set_header_labels(ndf = "Num DF", ddf = "Den DF", statistic = "F statistic",
-                    p.value = "P value", method = "Method") %>%
+                    p.value = "P value", method = "Method") |>
   autofit()
 ```
 
@@ -178,21 +179,21 @@ This example demonstrates a multivariable logistic regression model using the `s
 ```{r logistic}
 model_logit <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4, 
        family = quasibinomial) 
-logit_tbl <- model_logit %>% 
+logit_tbl <- model_logit |> 
   # functions from {broom.helpers}
-  tidy_and_attach(exp = TRUE) %>% # exponentiate coefficients to get odds ratios
-  tidy_remove_intercept() %>% 
-  tidy_add_term_labels() %>% 
+  tidy_and_attach(exp = TRUE) |> # exponentiate coefficients to get odds ratios
+  tidy_remove_intercept() |> 
+  tidy_add_term_labels() |> 
   select(label, or = estimate, p.value, or_low = conf.low, 
          or_upp = conf.high) 
 ```
 
 ```{r logistic_table, echo=FALSE}
-flextable(logit_tbl) %>% 
-  colformat_double(j = c(2, 4, 5), digits = 2) %>% 
-  colformat_double(j = 3, digits = 3) %>% 
+flextable(logit_tbl) |> 
+  colformat_double(j = c(2, 4, 5), digits = 2) |> 
+  colformat_double(j = 3, digits = 3) |> 
   set_header_labels(label = "Model term", or = "Odds ratio", p.value = "P-value",
-          or_low = "95% LCI", or_upp = "95% UCI") %>%
+          or_low = "95% LCI", or_upp = "95% UCI") |>
   autofit()
 ```
 
@@ -215,20 +216,20 @@ At this point we present an alternative analysis using relative risk regression 
 #   (in this case there are four).
 model_rr <- svyglm(SeekCancerInfo ~ gender + edu, hints5_4, 
        family = quasibinomial(log), start = c(-0.5, rep(0, 4))) 
-model_rr_tbl <- model_rr %>% 
-  tidy_and_attach(exp = TRUE) %>% # exporentiate to get risk ratios
-  tidy_remove_intercept() %>% 
-  tidy_add_term_labels() %>% 
+model_rr_tbl <- model_rr |> 
+  tidy_and_attach(exp = TRUE) |> # exporentiate to get risk ratios
+  tidy_remove_intercept() |> 
+  tidy_add_term_labels() |> 
   select(label, rr = estimate, p.value, rr_low = conf.low, 
          rr_upp = conf.high) 
 ```
 
 ```{r log_link_tbl, echo=FALSE}
-  flextable(model_rr_tbl) %>% 
-  colformat_double(j = c(2, 4, 5), digits = 2) %>% 
-  colformat_double(j = 3, digits = 3) %>% 
+  flextable(model_rr_tbl) |> 
+  colformat_double(j = c(2, 4, 5), digits = 2) |> 
+  colformat_double(j = 3, digits = 3) |> 
   set_header_labels(label = "Model term", rr = "Risk ratio", p.value = "P-value",
-          rr_low = "95% LCI", rr_upp = "95% UCI") %>%
+          rr_low = "95% LCI", rr_upp = "95% UCI") |>
   autofit()
   
 ```
@@ -236,7 +237,7 @@ model_rr_tbl <- model_rr %>%
 With a log link the outcome values are not constrained to the unit interval, so the analyst should check the results. The `augment()` function produces a record-level data set with fitted values, residuals, and other diagnostics. For survey models, the function produces a warning, but I have encountered no issues. The following check shows no fitted probabilities greater than one.
 
 ```{r check_rr}
-augment(model_rr) %>% 
+augment(model_rr) |> 
   count(exp(.fitted) > 1)
 ```
 
@@ -248,20 +249,20 @@ Like most surveys, nearly all variables in HINTS are categorical. Following the 
 
 ```{r lin_reg}
 model_lin <- svyglm(GeneralHealth ~ gender + edu, hints5_4)
-model_lin_tbl <- model_lin %>% 
-  tidy_and_attach() %>% 
-  tidy_remove_intercept() %>% 
-  tidy_add_term_labels() %>% 
+model_lin_tbl <- model_lin |> 
+  tidy_and_attach() |> 
+  tidy_remove_intercept() |> 
+  tidy_add_term_labels() |> 
   select(label, estimate, p.value, std.error, conf.low, conf.high) 
 ```
 
 ```{r lin_reg_tbl,echo=FALSE}
-  flextable(model_lin_tbl) %>% 
-  colformat_double(j = c(2, 4:6), digits = 4) %>% 
-  colformat_double(j = 3, digits = 3) %>% 
+  flextable(model_lin_tbl) |> 
+  colformat_double(j = c(2, 4:6), digits = 4) |> 
+  colformat_double(j = 3, digits = 3) |> 
   set_header_labels(label = "Model term", estimate = "Coefficient",
           std.error = "Std. Err.", conf.low = "95% LCI", conf.high = "95% UCI",
-                    p.value = "P-value") %>%
+                    p.value = "P-value") |>
   autofit()
 
 ```
@@ -293,11 +294,11 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
 Now construct a survey object allowing for all three modes, using the appropriate weights. Note that the data contain 150 replicate weights (50 for each of the three groups). The variable `Treatment_H5C3` identifies the survey mode, `nwgt0` is the person-level weight, and the replicate weights are `nwgt1` through `nwgt150`.
 
 ```{r svy_grp}
-hints5_3_grp <- hints5_3 %>% 
+hints5_3_grp <- hints5_3 |> 
   mutate(SeekCancerInfo = factor(SeekCancerInfo, 2:1, c("No", "Yes")),
          Treatment_H5C3 = 
            factor(Treatment_H5C3, 1:3, 
-                  c("Paper only", "Web option", "Web bonus"))) %>%   
+                  c("Paper only", "Web option", "Web bonus"))) |>   
   as_survey_rep(weights = "nwgt0", repweights = paste0("nwgt", 1:150), 
                 type = "JK1", scale = 49/50, mse = TRUE)
 ```
@@ -324,23 +325,25 @@ hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
                          "hints5_cycle3_public.sas7bdat"))
 ```
 
-```{r import_show_5_3, eval=FALSE}
+```{r import_show_5_3, eval=FALSE, echo=FALSE}
 hints5_3 <- read_sas(unz("HINTS5_Cycle3_SAS_20210305.zip",
                          "hints5_cycle3_public.sas7bdat"))
 ```
 
 ```{r recode5_3}
 hints5_3 <- read_sas(unz(here("data-raw", "HINTS5_Cycle3_SAS_20210305.zip"),
-                         "hints5_cycle3_public.sas7bdat")) %>% 
+                         "hints5_cycle3_public.sas7bdat")) |> 
   mutate(across(starts_with("AlcoholConditions"), 
-              ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) %>% 
+              ~ factor(.x, 1:3, c("Yes", "No", "Don't know")))) |> 
   # exclude "Don't know,"  create variable for certain belief
-  mutate(across(starts_with("AlcoholConditions"), ~ .x, .names = "{.col}_certain"))  %>% 
-  mutate(across(ends_with("_certain"), ~ factor(.x, c("Yes", "No")))) %>% 
+  mutate(across(starts_with("AlcoholConditions"), ~ .x, 
+                .names = "{.col}_certain"))  |> 
+  mutate(across(ends_with("_certain"), 
+                ~ factor(.x, c("Yes", "No")))) |> 
   # collapse "Yes" and "No," create variable for uncertain belief
   mutate(across(starts_with("AlcoholConditions"), 
                 ~ fct_collapse(.x, Certain = c("Yes", "No")),
-                .names = "{.col}_uncertain")) %>% 
+                .names = "{.col}_uncertain")) |> 
   # construct replicate weights survey object
   as_survey_rep(weights = "TG_all_FINWT0",
                 repweights = paste0("TG_all_FINWT", 1:50),
@@ -359,23 +362,23 @@ svychisq(
 They further write "Nearly half (43.2%; 95% CI 39.7%, 46.8%) of participants [who expressed a belief] did not believe that drinking too much alcohol causes cancer."
 
 ```{r alcohol}
-tbl_5 <- hints5_3 %>% 
-  filter(AlcoholConditions_Cancer != "Don't know") %>% 
-  group_by(AlcoholConditions_Cancer) %>% 
+tbl_5 <- hints5_3 |> 
+  filter(AlcoholConditions_Cancer != "Don't know") |> 
+  group_by(AlcoholConditions_Cancer) |> 
   summarize(n = unweighted(n()),
-            pct = survey_mean(na.rm = TRUE, vartype = "ci")) %>% 
+            pct = survey_mean(na.rm = TRUE, vartype = "ci")) |> 
   mutate(across(starts_with("pct"), ~ 100 * .x))
 
 ```
 
 ```{r tbl_5, echo=FALSE}
-flextable(tbl_5) %>% 
-  colformat_double(digits = 2) %>% 
+flextable(tbl_5) |> 
+  colformat_double(digits = 2) |> 
   set_header_labels(AlcoholConditions_Cancer = "Believes alcohol causes cancer", 
                     n = "n", pct = "Percent", pct_se = "Std. Err.", 
-                    pct_low = "95% LCI", pct_upp = "95% UCI") %>% 
-  colformat_int(j = 2, big.mark = "") %>% 
-  colformat_double(j = 3:5, digits = 1) %>% 
+                    pct_low = "95% LCI", pct_upp = "95% UCI") |> 
+  colformat_int(j = 2, big.mark = "") |> 
+  colformat_double(j = 3:5, digits = 1) |> 
             
   # line_spacing(space = 1, part = "body")
   autofit()
