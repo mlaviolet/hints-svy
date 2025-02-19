@@ -32,7 +32,7 @@ For each adult, person-level weights and a set of 50 replicate weights are provi
 
 ## About R
 
-R is a free software environment for statistical computing and graphics. It compiles and runs on a wide variety of platforms, including Microsoft Windows, MacOS, and major Linux distributions. At this writing, the current version is 4.2.1, released June 2022. R is typically run under an integrated development environment; the most popular is RStudio [@rstudio].
+R is a free software environment for statistical computing and graphics. It compiles and runs on Microsoft Windows, MacOS, and major Linux distributions. At this writing the current version is 4.2.3, released March 2023. R is typically run under an integrated development environment; the most popular is RStudio [@rstudio].
 
 Unlike the procedure-oriented languages SAS, SPSS, and Stata, R works by creating objects, best described as data structures which can be manipulated and from which data and other information can be extracted. For example, linear regression is done by creating an object which contains model coefficients, fitted values, residuals, significance test results, and other information about the fitted model. These data can be extracted and processed as needed. Objects are created and processed by functions; for example; `summary(df)` will produce a numerical summary or tally of each variable in the data set `df`. Various arguments control how the function operates; for example, `mean(df$x, na.rm = TRUE)` will compute the mean of the variable `x` in the data set `df`, omitting missing values. Resources for learning R include online tutorials and courses such as [@rtutori], [@rforth], and books by Wickham and Grolemund [@wickham2016] and Lander [@lander2017].
 
@@ -134,6 +134,7 @@ tbl_1 <- hints5_4 |>
   #   level and genderwith standard errors and confidence intervals
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE, vartype = c("se", "ci"))) |> 
+  ungroup() |>
   # survey package reports as proportions, convert to percentage
   mutate(across(starts_with("pct"), ~ 100 * .x))
 ```
@@ -308,8 +309,7 @@ The following code tests for group differences in the binary variable `SeekCance
 ```{r test_grp}
 model00 <- svyglm(SeekCancerInfo ~ Treatment_H5C3, hints5_3_grp, 
                   family = "quasibinomial") 
-# using likelihood ratio test
-regTermTest(model00, ~ Treatment_H5C3, method = "LRT", df = 147) 
+regTermTest(model00, ~ Treatment_H5C3, df = 147) 
 ```
 
 In this case group differences are not significant, so we can proceed with analyses using the combined sample. NCI recommends using the person-level weight `TG1_FINWT0` and replicate weights `TG_all_FINWT1` through `TG_all_FINWT50`.
@@ -367,6 +367,7 @@ tbl_5 <- hints5_3 |>
   group_by(AlcoholConditions_Cancer) |> 
   summarize(n = unweighted(n()),
             pct = survey_mean(na.rm = TRUE, vartype = "ci")) |> 
+  ungroup() |>
   mutate(across(starts_with("pct"), ~ 100 * .x))
 
 ```
